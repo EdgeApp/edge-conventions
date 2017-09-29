@@ -2,39 +2,170 @@
 
 ## Coding Conventions
 
-* Variable, classes, and types that space usage across more than one file should be named with more than one English word or use a prefix such as `Abc`. Single english words names are hard to uniquely search for.
-* Directories and Modules should not have a single file called `index.js` due to the difficulty in finding this file name in a debugging environment. Encorporate the module name in the name of the file. ie. `indexEthereum.js`
-* Class, interface, and type names should be camel case and begin with an upper case letter
-* Variable, function, and method names should be camel case but begin with a lower case letter
-* Acronyms in variable, class, or type names should be camel cased. ie. `AbcAccount`, `GuiWallet`, `enableOtp`. Not `ABCAccount`
-* Any code that needs to be fixed prior to the next production release should be commented and suffixed with developers name. ie.
+* Use two or more words or the prefix `Abc` when naming exported variables, exported classes, and exported types
 
-    `// Todo: Remove hard coded currencies and replace with module -paulvp`
+```javascript
+// incorrect
+export class Transaction {...}
+export type Data = {...}
 
-* More than double nested array dereferences or function calls should be broken up into multiple lines
-* Allocations of an object with a globally defined type should be named after that type as much as possible. ie.
+// correct
+export class AbcTransaction {...}
+export type ExchangeRateData = {...}
+```
 
-    `const abcTransaction: ABCTransaction = getTransaction()`
+* Postfix the names of index files with the name of its parent directory
 
-* Allocations of an array of objects with a globally defined type should be named after that type as much as possible. ie.
+```javascript
+// incorrect
+src/
+  components/
+    MyComponent/
+      index.js // <--
+      MyComponent.js
+      styles.js
 
-    `const abcTransactions: Array<ABCTransaction> = getTransactions()`
+// correct
+src/
+  components/
+    MyComponent/
+      indexMyComponent.js // <--
+      MyComponent.js
+      styles.js
+```
+
+* Use [Pascal Case](https://en.wikipedia.org/wiki/PascalCase) when naming classes, interfaces, and types
+
+```javascript
+// incorrect
+type mySpecialType = {...}
+type My_Special_Type = {...}
+type MY_SPECIAL_TYPE = {...}
+
+// correct
+type MySpecialType = {...}
+```
+
+* Use camel case when naming variables (other than constants), functions, and methods
+
+```javascript
+// incorrect
+const MySpecialVar = {...}
+const My_Special_Var = {...}
+const MY_SPECIAL_VAR = {...}
+
+// correct
+const mySpecialVar = {...}
+class MySpecialClass {
+  mySpecialMethod () {...} // <--
+}
+```
+
+* Use camel case when using acronyms in variables, classes, or type names
+
+```javascript
+// incorrect
+class ABCAccount = {...}
+const GUIWallet = {...}
+const enableOTP = () => {...}
+
+// correct
+class AbcAccount = ...
+const GuiWallet = ...
+const enableOtp = () => ...
+```
+
+* Use `TODO + initials` comments to label any code as not production ready
+
+```javascript
+// incorrect
+const denomination = {
+  currencyCode: 'USD' // Yikes!! this should definitely be changed
+}
+
+// correct
+const denomination = {
+  currencyCode: 'USD' // Todo: Replace hard coded currencies with library -paulvp
+}
+```
+
+* Break more than double nested array dereferences into multiple lines
+
+```javascript
+// incorrect
+
+// correct
+
+```
+* Break more than double nested or function calls into multiple lines
+
+```javascript
+// incorrect
+
+// correct
+
+```
+
+* Prefer naming objects the same as its globally defined type, when using a globally defined type
+
+```javascript
+// incorrect
+const tx: AbcTransaction = getTransaction()
+const accountObject: AbcAccount = getAccount()
+
+// correct
+const abcTransaction: AbcTransaction = getTransaction()
+const abcAccount: AbcAccount = getAccount()
+```
+
+* Prefer naming arrays of objects the same as its globally defined type, when using a globally defined type
+
+```javascript
+// incorrect
+const txs: Array<AbcTransaction> = getTransactions()
+const wallets: Array<AbcWallets> = getWallets()
+
+// correct
+const abcTransactions: Array<AbcTransaction> = getTransactions()
+```
 
 ## Workflow conventions
 
-* All merges into a `master` or `develop` branch should use --no-ff
-* Pull requests should not be made from branches that were themself branched from a pending pull request
-* Edits to any files that do not yet have Flow enabled should first enable Flow via a separate commit
-* All repos should `husky` installed as a devDependency
-* Debug logging can only be committed to the repo and on by default for the following types of information
+* Use `no-ff` when merging into 'master' or 'develop'
 
+```bash
+# incorrect
+> git checkout develop
+> git merge new-feature/my-new-feature
+
+# correct
+> git checkout develop
+> git merge --no-ff new-feature/my-new-feature
+```
+
+* If branched from a branch other than `develop` or `master`, wait for any dependent branches to be merged before requesting a pull request
+* Before making any changes to a javascript file, enable Flow and resolve any errors in a stand-alone commit
+* Install `husky` as a devDependency in all repos
+* Only commit debug logging if it includes any of the following types of information:
+    
     - Errors
     - Change in network status (server connect/disconnect)
     - Airbitz Core API calls
-    - User GUI actions
+    - User interactions
     - Currency Plugin API calls
     - Network events (incoming money, git sync with new data)
-    
+
+```javascript
+// incorrect
+console.log('tx.amountSatoshi', tx.amoutSatoshi)
+console.log('this.props.wallet', this.props.wallet)
+
+// correct
+console.log('Error: Insufficient Funds')
+console.log('Logout Requested')
+console.log('Network Disconnected')
+```
+
 * Each repo should have the following package.json scripts which accomplish the following
 
     - `build`: If necessary, run rollup, webpack, and flow-copy to populate `lib` folder. Should not run any lint, flow checking, or tests
