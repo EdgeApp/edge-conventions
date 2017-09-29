@@ -25,14 +25,21 @@
 * All merges into a `master` or `develop` branch should use --no-ff
 * Pull requests should not be made from branches that were themself branched from a pending pull request
 * Edits to any files that do not yet have Flow enabled should first enable Flow via a separate commit
-* All repos should be at minimum `standard.js` linted
-* All repos should have an `npm test` that at least includes`standard.js` linting
-* All repos should have an `npm precommit`, via Husky, that includes `npm build` (if exists) and `npm test`
+* All repos should `husky` installed as a devDependency
 * Debug logging can only be committed to the repo and on by default for the following types of information
 
-    1. Errors
-    2. Change in network status (server connect/disconnect)
-    3. Airbitz Core API calls
-    4. User GUI actions
-    5. Currency Plugin API calls
-    6. Network events (incoming money, git sync with new data)
+    - Errors
+    - Change in network status (server connect/disconnect)
+    - Airbitz Core API calls
+    - User GUI actions
+    - Currency Plugin API calls
+    - Network events (incoming money, git sync with new data)
+    
+* Each repo should have the following package.json scripts which accomplish the following
+
+    - `build`: If necessary, run rollup, webpack, and flow-copy to populate `lib` folder. Should not run any lint, flow checking, or tests
+    - `flow`: Run `flow`
+    - `lint`: Run `standard.js` or equivalent and `flow`
+    - `test`: Run `lint` and `flow`. Flow should exclude `*.js.flow` files. Lastly run `mocha` or `jest` tests
+    - `precommit`: Run `build` then `test`
+    - `prepare`: Run `build`
