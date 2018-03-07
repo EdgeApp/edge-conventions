@@ -129,6 +129,18 @@ const wallets: Array<AbcWallets> = getWallets()
 const abcTransactions: Array<AbcTransaction> = getTransactions()
 ```
 
+* Only use named imports
+
+```javascript
+//incorrect
+import * as Constants from '../constants.js'
+const days = 12341234 / Constants.MILLISECONDS_PER_DAY
+
+// correct
+import {MILLISECONDS_PER_DAY} from './constants.js'
+const days = 12341234 / MILLISECONDS_PER_DAY
+```
+
 ## Workflow conventions
 
 * Use `no-ff` when merging into 'master' or 'develop'
@@ -147,7 +159,7 @@ const abcTransactions: Array<AbcTransaction> = getTransactions()
 * Before making any changes to a javascript file, enable Flow and resolve any errors in a stand-alone commit
 * Install `husky` as a devDependency in all repos
 * Only commit debug logging if it includes any of the following types of information:
-    
+
     - Errors
     - Change in network status (server connect/disconnect)
     - Airbitz Core API calls
