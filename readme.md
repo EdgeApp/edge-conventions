@@ -129,6 +129,30 @@ const wallets: Array<AbcWallets> = getWallets()
 const abcTransactions: Array<AbcTransaction> = getTransactions()
 ```
 
+## React Conventions
+
+* Do not create new objects in connectors
+
+```javascript
+const defaults = {
+  d: 123,
+  e: 456
+}
+
+const mapStateToProps = (state: State) => {
+  return {
+    a: {
+      ...defaults,
+      ...state.a
+    },
+    b: state.b,
+    c: state.c
+  }
+}
+
+export const connectedMyCompoent = connect(mapStateToProps, mapDispatchToProps)(MyComponent)
+```
+
 ## Workflow conventions
 
 * Use `no-ff` when merging into 'master' or 'develop'
@@ -147,7 +171,7 @@ const abcTransactions: Array<AbcTransaction> = getTransactions()
 * Before making any changes to a javascript file, enable Flow and resolve any errors in a stand-alone commit
 * Install `husky` as a devDependency in all repos
 * Only commit debug logging if it includes any of the following types of information:
-    
+
     - Errors
     - Change in network status (server connect/disconnect)
     - Airbitz Core API calls
