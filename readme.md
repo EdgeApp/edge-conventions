@@ -2,7 +2,7 @@
 
 ## Coding Conventions
 
-* Use two or more words or the prefix `Abc` when naming exported variables, exported classes, and exported types
+* Use two or more words or the prefix `Edge` when naming exported variables, exported classes, and exported types
 
 ```javascript
 // incorrect
@@ -10,7 +10,7 @@ export class Transaction {...}
 export type Data = {...}
 
 // correct
-export class AbcTransaction {...}
+export class EdgeTransaction {...}
 export type ExchangeRateData = {...}
 ```
 
@@ -65,12 +65,12 @@ class MySpecialClass {
 
 ```javascript
 // incorrect
-class ABCAccount = {...}
+class EDGEAccount = {...}
 const GUIWallet = {...}
 const enableOTP = () => {...}
 
 // correct
-class AbcAccount = ...
+class EdgeAccount = ...
 const GuiWallet = ...
 const enableOtp = () => ...
 ```
@@ -110,23 +110,23 @@ const denomination = {
 
 ```javascript
 // incorrect
-const tx: AbcTransaction = getTransaction()
-const accountObject: AbcAccount = getAccount()
+const tx: EdgeTransaction = getTransaction()
+const accountObject: EdgeAccount = getAccount()
 
 // correct
-const abcTransaction: AbcTransaction = getTransaction()
-const abcAccount: AbcAccount = getAccount()
+const edgeTransaction: EdgeTransaction = getTransaction()
+const edgeAccount: EdgeAccount = getAccount()
 ```
 
 * Prefer naming arrays of objects the same as its globally defined type, when using a globally defined type
 
 ```javascript
 // incorrect
-const txs: Array<AbcTransaction> = getTransactions()
-const wallets: Array<AbcWallets> = getWallets()
+const txs: Array<EdgeTransaction> = getTransactions()
+const wallets: Array<EdgeWallets> = getWallets()
 
 // correct
-const abcTransactions: Array<AbcTransaction> = getTransactions()
+const edgeTransactions: Array<EdgeTransaction> = getTransactions()
 ```
 
 ## React Conventions
@@ -150,7 +150,7 @@ const mapStateToProps = (state: State) => {
   }
 }
 
-export const connectedMyCompoent = connect(mapStateToProps, mapDispatchToProps)(MyComponent)
+export const connectedMyComponent = connect(mapStateToProps, mapDispatchToProps)(MyComponent)
 ```
 
 ## Workflow conventions
