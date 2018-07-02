@@ -4,6 +4,7 @@
 * [Jest](#Jest)
 * [Husky](#Husky)
 * [Eslint](Eslint)
+* [Lint-staged](Lint-staged)
 * [Flow](Flow)
 * [Import-sort](Import-sort)
 * [Prettier](Prettier)
@@ -24,6 +25,16 @@
   ```
   // package.json
   "lint": "eslint '*.js' 'src/**/*.js'"
+  ```
+
+### Lint-staged [(github)](https://github.com/okonet/lint-staged)
+  ```
+  // package.json
+  "precommit": "lint-staged"
+  ...
+  "lint-staged": {
+    "*.js": ["eslint --fix", "git add"]
+  }
   ```
 
 ### Flow [(github)](https://github.com/facebook/flow) [(web)](https://flow.org/)
