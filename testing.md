@@ -91,15 +91,16 @@ yarn test -— -u YourTestName
 
 /* globals jest describe it expect */
 
-import renderer from 'react-test-renderer'
+import ShallowRenderer from 'react-test-renderer/shallow'
 
 describe('MyComponent', () => {
   it('should render Some Text', () => {
+    const renderer = new ShallowRenderer()
     const props = {
       someText: 'Some Text',
       onPress: jest.fn
     }
-    const actual = renderer.create(<MyComponent {...props} />).toJSON()
+    const actual = renderer.render(<MyComponent {...props} />)
 
     expect(actual).toMatchSnapshot()
   })
