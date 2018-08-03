@@ -57,8 +57,8 @@ const getSomeReduxStateSelector = (state: State) => state.someReduxState
 const getMoreReduxStateSelector = (state: State) => state.moreReduxState
 
 export const mapStateToProps = (state: State) => ({
-  getSomeReduxState: getSomeReduxStateSelector(),
-  getMoreReduxState: getMoreReduxStateSelector()
+  getSomeReduxState: getSomeReduxStateSelector,
+  getMoreReduxState: getMoreReduxStateSelector
 })
 
 export const mapDispatchToProps = (dispatch: Dispatch) => ({
