@@ -42,35 +42,34 @@ export const connectedMyComponent = connect(mapStateToProps, mapDispatchToProps)
 
 ### Parent Scene vs Child Components
 
-Only Parent components should be connected to redux via the `Connect()` function with a mapStateToProps and mapDispathToProps routine. All child components should NOT be directly connected to redux. Instead, parent components should pass in selector functions as props to the child components. Child components should then be defined as `PureComponent` and simply assign a local state variable with the return value of the selector. This will prevent re-rendering of the parent component when only the child component specifically needs access to redux state.
+Only Parent components should directly access redux state. All child components should access redux only via selector functions passed in by the parent scene as props to the child components. Child components should then simply assign a local state variable with the return value of the selector. This will prevent re-rendering of the parent component when only the child component specifically needs access to redux state.
 
 ie.
 
 In `MyParentComponentSceneConnector.js`
-```
+```javascript
 import { connect } from 'react-redux'
 
 import type { Dispatch, State } from '../../modules/ReduxTypes'
 import { MyParentComponentScene } from './MyParentComponentScene.js'
 
-function getSomeReduxStateSelector (state: State) = () => state.someReduxState
-function getMoreReduxStateSelector (state: State) = () => state.moreReduxState
+const getSomeReduxStateSelector = (state: State) => state.someReduxState
+const getMoreReduxStateSelector = (state: State) => state.moreReduxState
 
 export const mapStateToProps = (state: State) => ({
-  getSomeReduxState: getSomeReduxStateSelector(state),
-  getMoreReduxState: getMoreReduxStateSelector(state)
+  getSomeReduxState: getSomeReduxStateSelector(),
+  getMoreReduxState: getMoreReduxStateSelector()
 })
 
 export const mapDispatchToProps = (dispatch: Dispatch) => ({
 })
 
-const MyParentComponentScene = connect(mapStateToProps, mapDispatchToProps)(MyParentComponentScene)
-export MyParentComponentSceneConnected
+export const MyParentComponentScene = connect(mapStateToProps, mapDispatchToProps)(MyParentComponentScene)
 
 ```
 
 In `MyParentComponentScene.js`
-```
+```javascript
 export class MyParentComponentScene extends Component<Props, State> {
   render () {
     <MyChildComponent
@@ -83,32 +82,26 @@ export class MyParentComponentScene extends Component<Props, State> {
 
 
 In `MyChildComponent.js`
-```
-type State = {
-  state1: boolean,
-  state2: string
+```javascript
+export type MyChildComponentStateProps = {
+  state1: string,
+  state2: boolean
 }
 
-export class MyChildComponent extends PureComponent<Props, State> {
-  constructor (props: Props) {
-    this.state = {
-      state1: false,
-      state2: ''
-    }
-  }
+type Props = MyChildComponentStateProps
 
-  getDerivedStateFromProps(nextProps: Props, prevState: State) {
-    const newState = {
-      state1: nextProps.stateSelector1()
-      state2: nextProps.stateSelector2()
-    }
-    return newState
-  } 
-  
+export class MyChildComponentInner extends Component<Props, State> {
   render () {
-    // Use state1 and state2 in render
+    // Use props.state1 and props.state2 in render
   }
 }
+
+export const mapStateToProps = (state: State, ownProps: any) => ({
+  state1: ownProps.stateSelector1(state),
+  state2: ownProps.stateSelector1(state)
+})
+
+export const MyChildComponent = connect(mapStateToProps, mapDispatchToProps)
 ```
 ### Reducers
 
