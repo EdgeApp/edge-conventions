@@ -95,3 +95,12 @@ const wallets: Array<EdgeWallets> = getWallets()
 // correct
 const edgeTransactions: Array<EdgeTransaction> = getTransactions()
 ```
+
+* Only use named exports
+ ```javascript
+// incorrect
+export default class FullWalletListRow extends Component<OwnProps> {
+
+ // correct
+export class FullWalletListRow extends Component<OwnProps> {
+```
