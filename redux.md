@@ -42,67 +42,108 @@ export const connectedMyComponent = connect(mapStateToProps, mapDispatchToProps)
 
 ### Parent Scene vs Child Components
 
-Only Parent components should directly access redux state. All child components should access redux only via selector functions passed in by the parent scene as props to the child components. Child components should then simply assign a local state variable with the return value of the selector. This will prevent re-rendering of the parent component when only the child component specifically needs access to redux state.
+Only Parent Scene components should directly access redux state. All child components should access redux only via selector
+functions passed in by the parent scene as props to the child components. Child components connectors should evaluate
+the selector and return the result via mapStateToProps. This will prevent re-rendering of the parent component when
+only the child component specifically needs access to redux state.
 
-ie.
+Props of selector based data should allow for either a function or the actual data to be passed as the prop.
 
-In `MyParentComponentSceneConnector.js`
-```javascript
-import { connect } from 'react-redux'
+#### Why have this structure?
 
-import type { Dispatch, State } from '../../modules/ReduxTypes'
-import { MyParentComponentScene } from './MyParentComponentScene.js'
+We have a scene, and inside that scene we have a reusable "layout", like a row of a list of something. The layout has some inner leaf components that actually do the work.
 
-const getSomeReduxStateSelector = (state: State) => state.someReduxState
-const getMoreReduxStateSelector = (state: State) => state.moreReduxState
+- scene
+  - layout
+    - widget
+    - widget
+    - widget
 
-export const mapStateToProps = (state: State) => ({
-  getSomeReduxState: getSomeReduxStateSelector,
-  getMoreReduxState: getMoreReduxStateSelector
-})
+#### Easy option
 
-export const mapDispatchToProps = (dispatch: Dispatch) => ({
-})
+The scene gets all data, and just passes it to its children. Simple & obvious. But this means any change to props needed
+by the widgets (child components) will cause the entire parent scene to re-render.
 
-export const MyParentComponentScene = connect(mapStateToProps, mapDispatchToProps)(MyParentComponentScene)
+- connect
+  - scene
+    - layout
+      - widget
+      - widget
+      - widget
 
-```
+#### Efficient option
 
-In `MyParentComponentScene.js`
-```javascript
-export class MyParentComponentScene extends Component<Props, State> {
-  render () {
-    <MyChildComponent
-      stateSelector1=props.getSomeReduxState
-      stateSelector2=props.getMoreReduxState
-    >
-  }
+Each component knows where it data comes from. This means we need an army of very specific leaf components which are not re-usable, since they are specific to the data source of the scene.
+It also means the layout is not reusable, since its children are locked to the scene.
+
+- scene
+  - layout
+    - connect
+      - widget
+    - connect
+      - widget
+    - connect
+      - widget
+
+#### Wired Components (Hybrid option)
+
+The scene passes selectors to child components as props. The scene knows where in redux the data comes from, like in the easy case. The leaf
+components have the actual connections, as in the fast case. They use the selectors passed in, so they are reusable.
+This also allows nesting of wired widgets where each layer of widgets does not directly have to know where in redux
+its data is coming from.
+
+**Important rule: Wired Components should not directly access `state` but only use it to pass into selectors given through
+props**
+
+- scene <- contains selectors
+  - layout <- reusable
+    - connect <- reusable
+      - widget
+        - connect <- reusable
+          - widget
+    - connect
+      - widget
+    - connect
+      - widget
+
+```js
+// Not a connected component. Never re-renders.
+function Scene() {
+  return (
+    <Layout
+      text={state => state.blah.message}
+      image={state => state.foo.avatar}
+    />
+    <WiredText text={state => state.bar.name} />
+    <WiredText text='Hello World' />
+  );
+}
+
+function Layout (props) {
+  <div>
+    <WiredImage src={props.image} />
+    <WiredText text={props.text} />
+  </div>
+}
+
+// Image library
+const WiredImage = connect(Image, (state, ownProps) => ({
+  src: typeof ownProps.src === 'function' ? ownProps.src(state) : ownProps.src
+}))
+
+function Image (props) {
+  return <img src={props.src} />
+}
+
+// Text library
+const WiredText = connect(Text, (state, ownProps) => ({
+  text: typeof ownProps.text === 'function' ? ownProps.text(state) : ownProps.text
+}))
+function Text (props) {
+  return <p>{props.text}</p>
 }
 ```
 
-
-In `MyChildComponent.js`
-```javascript
-export type MyChildComponentStateProps = {
-  state1: string,
-  state2: boolean
-}
-
-type Props = MyChildComponentStateProps
-
-export class MyChildComponentInner extends Component<Props, State> {
-  render () {
-    // Use props.state1 and props.state2 in render
-  }
-}
-
-export const mapStateToProps = (state: State, ownProps: any) => ({
-  state1: ownProps.stateSelector1(state),
-  state2: ownProps.stateSelector1(state)
-})
-
-export const MyChildComponent = connect(mapStateToProps, mapDispatchToProps)
-```
 ### Reducers
 
 ### Actions
