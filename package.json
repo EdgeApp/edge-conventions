@@ -1,0 +1,27 @@
+{
+  "name": "edge-conventions",
+  "version": "1.0.0",
+  "private": true,
+  "description": "A linter for the Edge coding conventions",
+  "repository": "git@github.com:EdgeApp/edge-conventions.git",
+  "license": "MIT",
+  "bin": {
+    "edge-lint": "./index.sh"
+  },
+  "dependencies": {
+    "babel-eslint": "^10.0.1",
+    "eslint": "^5.8.0",
+    "eslint-config-standard": "^12.0.0",
+    "eslint-plugin-flowtype": "^3.1.4",
+    "eslint-plugin-import": "^2.14.0",
+    "eslint-plugin-node": "^8.0.0",
+    "eslint-plugin-promise": "^4.0.1",
+    "eslint-plugin-standard": "^4.0.0",
+    "husky": "^1.1.2",
+    "import-sort-cli": "^5.2.0",
+    "import-sort-parser-babylon": "^5.2.0",
+    "import-sort-style-module": "^5.0.0",
+    "lint-staged": "^8.0.4",
+    "prettier-eslint-cli": "^4.7.1"
+  }
+}
