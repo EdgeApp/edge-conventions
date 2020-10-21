@@ -35,7 +35,7 @@ console.log('Logout Requested')
 console.log('Network Disconnected')
 ```
 
-* Each repo should have the following package.json scripts which accomplish the following
+* (XXX Needs Update)Each repo should have the following package.json scripts which accomplish the following
 
     - `build`: If necessary, run rollup, webpack, and flow-copy to populate `lib` folder. Should not run any lint, flow checking, or tests
     - `flow`: Run `flow`
