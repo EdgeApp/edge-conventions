@@ -31,6 +31,7 @@
   ```
 ----
 ### Formatting
+* eslint-config-standard-kit [(github)](https://github.com/swansontec/eslint-config-standard-kit/) [(web tool)](https://www.swansontec.com/eslint-config-standard-kit/)
 * Eslint [(github)](https://github.com/eslint/eslint) [(web)](https://eslint.org/)
 * Prettier [(github)](https://github.com/prettier/prettier) [(web)](https://prettier.io/)
 * Lint-staged [(github)](https://github.com/okonet/lint-staged)
