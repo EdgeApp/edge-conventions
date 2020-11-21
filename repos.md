@@ -60,3 +60,26 @@
     }
   }
   ```
+----
+## Dependencies
+
+All dependencies should be defined with their full URLs or NPM package version. [GitHub short-hand URLs](https://docs.npmjs.com/cli/v6/configuring-npm/package-json#github-urls) should not be used due to an [outstanding issue with Yarn not running prepare/prepack](https://github.com/yarnpkg/yarn/issues/5235#issue-289053582) for these types of dependencies.
+
+#### Do
+```json
+{
+  "dependencies": {
+    "react": "^17.0.1",
+    "edge-currency-accountbased": "git://github.com/EdgeApp/edge-currency-accountbased.git#v0.7.33"
+  }
+}
+```
+
+#### Don't
+```json
+{
+  "dependencies": {
+    "edge-currency-accountbased": "EdgeApp/edge-currency-accountbased#v0.7.33"
+  }
+}
+```
