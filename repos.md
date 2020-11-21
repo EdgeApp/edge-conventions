@@ -83,3 +83,14 @@ All dependencies should be defined with their full URLs or NPM package version. 
   }
 }
 ```
+----
+## Scripts
+
+Each repo should have the following package.json scripts which accomplish the following:
+
+- `build`: If necessary, run rollup, webpack, and flow-copy to populate `lib` folder. Should not run any lint, flow checking, or tests
+- `flow`: Run `flow`
+- `lint`: Run `standard.js` or equivalent and `flow`
+- `test`: Run `lint` and `flow`. Flow should exclude `*.js.flow` files. Lastly run `mocha` or `jest` tests
+- `precommit`: Run `build` then `test`
+- `prepare`: Run `build`
