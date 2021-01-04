@@ -144,6 +144,14 @@ code)."
 
 source: [How to Write a Git Commit Message](https://chris.beams.io/posts/git-commit/#seven-rules)
 
+## Use "future commits" and rebasing for feature dependencies
+
+When `branch-b` builds on `branch-a`, but `branch-a` has not yet been merged into master, create a fake merge commit for `branch-a` and build `branch-b` at that merge commit. Use "future! branch-a" as the commit message.
+
+Use [GitHub's draft pull-request](https://github.blog/2019-02-14-introducing-draft-pull-requests/) feature when creating the PR for `branch-b`. This will signal to the reviewer(s) that the PR is a work-in-progress. The draft status can be removed once `branch-b` has been rebased onto master and there are no longer future-commits in the branch.
+
+For an in-depth guide into this workflow see: [Workflow Conventions](git-future-commit-workflow.md)
+
 ## Use "fixup commits" for changes from PR feedback
 
 When a reviewer requests a change during review of a PR, the pull-requester should use "fixup commits" to resolve each requested change. The fixup commit will include the prefix "fixup!" followed by the commit message of the commit it is fixing.
