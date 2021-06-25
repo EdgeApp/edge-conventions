@@ -1,0 +1,14 @@
+# Temp Folder:
+/temp
+
+# Package managers:
+node_modules/
+npm-debug.log
+package-lock.json
+yarn-error.log
+.git/
+
+# Editors:
+.DS_Store
+.idea/
+.vscode/

@@ -1,6 +1,15 @@
-# Server Conventions
+# [<](README.md) &nbsp; Server Conventions
 
-Edge uses a micro-services architecture with small codebases each dedicated to a specific purpose (login, file sync, exchange rates, and so forth). Each server lives in its own git repository with a name like "edge-purpose-server". Each server should have `"private": true` in its `package.json` file, since server code does not belong on NPM.
+* [Server Versions](#server-versions)
+* [Client Libraries](#client-libraries)
+* [Server Exported Types](#server-exported-types)
+* [Client Usage of Server Exported Types](#client-usage-of-server-exported-types)
+
+&nbsp;
+
+Edge uses a micro-services architecture with small code bases each dedicated to a specific purpose (login, file sync, exchange rates, and so forth). Each server lives in its own git repository with a name like "edge-purpose-server". Each server should have `"private": true` in its `package.json` file, since server code does not belong on NPM.
+
+&nbsp;
 
 ## Server Versions
 
@@ -11,15 +20,23 @@ Although servers do not live on NPM, we still maintain a `CHANGELOG.md` file and
 
 Servers should never implement breaking changes. If a change cannot be backwards-compatible, it should exist as a new endpoint. Old endpoints should be deprecated & eventually deactivated after some period of time. Deactivated endpoints should not be deleted, but should instead return HTTP status code 410, "Gone", or some other similar error.
 
+[Back to the top](#--server-conventions)
+
+&nbsp;
+
 ## Client Libraries
 
 Each Edge server should come with a matching client library, typically named "edge-purpose-client". This library should implement all the logic needed to communicate with the server, including knowledge of the server's endpoints, query parameters, required HTTP headers, request & reply formats, and any algorithms needed to make use of the server's data.
 
-For instance, the client library "edge-sync-client" would include the logic needed to maintain a repository on disk, identifying out-of-date files and synchronizing changes with the server. The client library "edge-info-client" might know how to fetch lists of resources from the info server, as well as logic for perfoming client-side load balancing using these resource lists.
+For instance, the client library "edge-sync-client" would include the logic needed to maintain a repository on disk, identifying out-of-date files and synchronizing changes with the server. The client library "edge-info-client" might know how to fetch lists of resources from the info server, as well as logic for performing client-side load balancing using these resource lists.
 
-These client libraries are versioned independently from the server they communicate with, since they can implement bug fixes and add features without necessarily requiring server changes (and vice-versa). Client libraries should be versioned using [Samantic Versioning](https://semver.org/).
+These client libraries are versioned independently from the server they communicate with, since they can implement bug fixes and add features without necessarily requiring server changes (and vice-versa). Client libraries should be versioned using [Semantic Versioning](https://semver.org/).
 
 Servers are encouraged to share code with their client libraries, such as type definitions, cleaners, constant definitions, and so forth. Putting the shared code in the client library is the most convenient option, since the client would be published to NPM for easy consumption by the server. However it is also possible to share code the other way around (from the server, as below).
+
+[Back to the top](#--server-conventions)
+
+&nbsp;
 
 ## Server Exported Types
 
@@ -103,6 +120,10 @@ Here's a breakdown describing each dependency and configuration:
   * `sucrase`: Necessary for running/building typescript (as a faster alternative to using tsc for JS output).
   * `typescript`: Necessary for building type definition files and for development.
 
+[Back to the top](#--server-conventions)
+
+&nbsp;
+
 ## Client Usage of Server Exported Types
 
 A client may use the exported types from a server by including it as a dependency using the GitHub repo URL in its `package.json` file:
@@ -128,3 +149,5 @@ import { asApiGetRequest, asApiGetResponse } from 'my-server'
 ```
 
 Because server versions track the API changes of the HTTP interface and _not_ the versioning of any exported types, there are no guarantees that types wont have breaking changes from one server version to another. This is one of the caveats to exporting types from the server, and why it is recommended to define and export types on a complementary client-side library for the server (see 'Client Libraries' above).
+
+[Back to the top](#--server-conventions)

@@ -1,0 +1,83 @@
+[
+  {
+    "metadata": {
+      "id": "ae9e3eb0-3357-4cc0-90ee-598d2d384757",
+      "publisherId": "eg2.vscode-npm-script",
+      "publisherDisplayName": "eg2"
+    },
+    "name": "vscode-npm-script",
+    "publisher": "eg2",
+    "version": "0.3.21"
+  },
+  {
+    "metadata": {
+      "id": "b0f06c6b-24fb-4d7b-bd79-bc5e2fa17312",
+      "publisherId": "vscjava.vscode-maven",
+      "publisherDisplayName": "vscjava"
+    },
+    "name": "vscode-maven",
+    "publisher": "vscjava",
+    "version": "0.30.0"
+  },
+
+  {
+    "metadata": {
+      "id": "9383ac61-0ba7-4ebb-8efb-0e939c1005ea",
+      "publisherId": "waderyan.babelrc",
+      "publisherDisplayName": "waderyan"
+    },
+    "name": "babelrc",
+    "publisher": "waderyan",
+    "version": "1.0.0"
+  },
+  {
+    "metadata": {
+      "id": "cd596fa2-413d-4f31-af4d-c0184c50a10c",
+      "publisherId": "ivory-lab.jenkinsfile-support",
+      "publisherDisplayName": "ivory-lab"
+    },
+    "name": "jenkinsfile-support",
+    "publisher": "ivory-lab",
+    "version": "1.1.0"
+  },
+  {
+    "metadata": {
+      "id": "3e891cf9-53cb-49a3-8d01-8f0b1f0afb29",
+      "publisherId": "codezombiech.gitignore",
+      "publisherDisplayName": "codezombiech"
+    },
+    "name": "gitignore",
+    "publisher": "codezombiech",
+    "version": "0.6.0"
+  },
+  {
+    "metadata": {
+      "id": "daf8b44d-8aae-4da2-80c5-1f770219f643",
+      "publisherId": "DavidAnson.vscode-markdownlint",
+      "publisherDisplayName": "DavidAnson"
+    },
+    "name": "vscode-markdownlint",
+    "publisher": "DavidAnson",
+    "version": "0.40.4"
+  },
+  {
+    "metadata": {
+      "id": "0cb81da2-1880-4755-9995-0ae9cc728e20",
+      "publisherId": "DotJoshJohnson.xml",
+      "publisherDisplayName": "DotJoshJohnson"
+    },
+    "name": "xml",
+    "publisher": "DotJoshJohnson",
+    "version": "2.5.1"
+  },
+  {
+    "metadata": {
+      "id": "2061917f-f76a-458a-8da9-f162de22b97e",
+      "publisherId": "redhat.vscode-yaml",
+      "publisherDisplayName": "redhat"
+    },
+    "name": "vscode-yaml",
+    "publisher": "redhat",
+    "version": "0.18.0"
+  }
+]

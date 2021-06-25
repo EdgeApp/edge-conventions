@@ -1,0 +1,72 @@
+[
+  {
+    "metadata": {
+      "id": "f60a60a6-95ba-42d4-b41c-3d24c1b89588",
+      "publisherId": "EditorConfig.EditorConfig",
+      "publisherDisplayName": "EditorConfig"
+    },
+    "name": "EditorConfig",
+    "publisher": "EditorConfig",
+    "version": "0.16.4"
+  },
+  {
+    "metadata": {
+      "id": "e337c67b-55c2-4fef-8949-eb260e7fb7fd",
+      "publisherId": "Shan.code-settings-sync",
+      "publisherDisplayName": "Shan"
+    },
+    "name": "code-settings-sync",
+    "publisher": "Shan",
+    "version": "3.4.3"
+  },
+  {
+    "metadata": {
+      "id": "feda5228-1904-4f14-9634-1f4e51c529df",
+      "publisherId": "kdcro101.favorites",
+      "publisherDisplayName": "kdcro101"
+    },
+    "name": "favorites",
+    "publisher": "kdcro101",
+    "version": "2.4.5"
+  },
+  {
+    "metadata": {
+      "id": "4de763bd-505d-4978-9575-2b7696ecf94e",
+      "publisherId": "eamodio.gitlens",
+      "publisherDisplayName": "eamodio"
+    },
+    "name": "gitlens",
+    "publisher": "eamodio",
+    "version": "11.4.1"
+  },
+  {
+    "metadata": {
+      "id": "c6a25fb4-b02a-4cb3-95c2-bb77763f1423",
+      "publisherId": "yycalm.linecount",
+      "publisherDisplayName": "yycalm"
+    },
+    "name": "linecount",
+    "publisher": "yycalm",
+    "version": "0.1.7"
+  },
+  {
+    "metadata": {
+      "id": "1b747f06-3789-4ebd-ac99-f1fe430c3347",
+      "publisherId": "alefragnani.project-manager",
+      "publisherDisplayName": "alefragnani"
+    },
+    "name": "project-manager",
+    "publisher": "alefragnani",
+    "version": "12.1.0"
+  },
+  {
+    "metadata": {
+      "id": "69ddd764-339a-4ecc-97c1-9c4ece58e36d",
+      "publisherId": "GitHub.vscode-pull-request-github",
+      "publisherDisplayName": "GitHub"
+    },
+    "name": "vscode-pull-request-github",
+    "publisher": "GitHub",
+    "version": "0.25.1"
+  }
+]

@@ -1,0 +1,53 @@
+[
+  {
+    "metadata": {
+      "id": "38583aca-2ba1-417f-80fc-68ca8d717fb4",
+      "publisherId": "rbbit.typescript-hero",
+      "publisherDisplayName": "rbbit"
+    },
+    "name": "typescript-hero",
+    "publisher": "rbbit",
+    "version": "3.0.0"
+  },
+
+  {
+    "metadata": {
+      "id": "d7b592dd-41c9-4f2b-acf3-055ae65e55c6",
+      "publisherId": "dzannotti.vscode-babel-coloring",
+      "publisherDisplayName": "dzannotti"
+    },
+    "name": "vscode-babel-coloring",
+    "publisher": "dzannotti",
+    "version": "0.0.4"
+  },
+  {
+    "metadata": {
+      "id": "b864db6b-8147-4ff8-b05a-f7c906c91f02",
+      "publisherId": "joshpeng.sublime-babel-vscode",
+      "publisherDisplayName": "joshpeng"
+    },
+    "name": "sublime-babel-vscode",
+    "publisher": "joshpeng",
+    "version": "0.2.10"
+  },
+  {
+    "metadata": {
+      "id": "c62f9345-3742-4644-bbe5-0ceffc00c775",
+      "publisherId": "loiane.ts-extension-pack",
+      "publisherDisplayName": "loiane"
+    },
+    "name": "ts-extension-pack",
+    "publisher": "loiane",
+    "version": "0.2.0"
+  },
+  {
+    "metadata": {
+      "id": "6bc1e3ad-c0e2-46b6-bbad-246c5f59215b",
+      "publisherId": "pmneo.tsimporter",
+      "publisherDisplayName": "pmneo"
+    },
+    "name": "tsimporter",
+    "publisher": "pmneo",
+    "version": "2.0.1"
+  }
+]
