@@ -1,0 +1,72 @@
+[
+  {
+    "metadata": {
+      "id": "d36bad53-910d-481a-a7ee-8992450665f6",
+      "publisherId": "mathiasfrohlich.Kotlin",
+      "publisherDisplayName": "mathiasfrohlich"
+    },
+    "name": "Kotlin",
+    "publisher": "mathiasfrohlich",
+    "version": "1.7.1"
+  },
+  {
+    "metadata": {
+      "id": "f1f59ae4-9318-4f3c-a9b5-81b2eaa5f8a5",
+      "publisherId": "ms-python.python",
+      "publisherDisplayName": "ms-python"
+    },
+    "name": "python",
+    "publisher": "ms-python",
+    "version": "2021.4.765268190"
+  },
+  {
+    "metadata": {
+      "id": "32b3756e-9965-4229-8971-4e5066dadc2c",
+      "publisherId": "NicolasVuillamy.vscode-groovy-lint",
+      "publisherDisplayName": "NicolasVuillamy"
+    },
+    "name": "vscode-groovy-lint",
+    "publisher": "NicolasVuillamy",
+    "version": "1.4.0"
+  },
+  {
+    "metadata": {
+      "id": "61fcd0cf-64d7-4836-8d6b-d55f4fb83281",
+      "publisherId": "vscjava.vscode-java-debug",
+      "publisherDisplayName": "vscjava"
+    },
+    "name": "vscode-java-debug",
+    "publisher": "vscjava",
+    "version": "0.33.1"
+  },
+  {
+    "metadata": {
+      "id": "7865e561-1c83-410e-9b99-aabada597a7e",
+      "publisherId": "vscjava.vscode-java-dependency",
+      "publisherDisplayName": "vscjava"
+    },
+    "name": "vscode-java-dependency",
+    "publisher": "vscjava",
+    "version": "0.18.3"
+  },
+  {
+    "metadata": {
+      "id": "96f11e1f-1a46-4592-b084-f025b2c2a81f",
+      "publisherId": "vscjava.vscode-java-pack",
+      "publisherDisplayName": "vscjava"
+    },
+    "name": "vscode-java-pack",
+    "publisher": "vscjava",
+    "version": "0.14.0"
+  },
+  {
+    "metadata": {
+      "id": "67c06b0d-1891-42ca-b2a8-113e79bff069",
+      "publisherId": "vscjava.vscode-java-test",
+      "publisherDisplayName": "vscjava"
+    },
+    "name": "vscode-java-test",
+    "publisher": "vscjava",
+    "version": "0.29.0"
+  }
+]

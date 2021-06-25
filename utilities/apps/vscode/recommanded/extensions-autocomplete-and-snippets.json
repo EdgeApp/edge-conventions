@@ -1,0 +1,62 @@
+[
+  {
+    "metadata": {
+      "id": "dff6b801-247e-40e9-82e8-8c9b1d19d1b8",
+      "publisherId": "christian-kohler.npm-intellisense",
+      "publisherDisplayName": "christian-kohler"
+    },
+    "name": "npm-intellisense",
+    "publisher": "christian-kohler",
+    "version": "1.3.1"
+  },
+  {
+    "metadata": {
+      "id": "a41c1549-4053-44d4-bf30-60fc809b4a86",
+      "publisherId": "christian-kohler.path-intellisense",
+      "publisherDisplayName": "christian-kohler"
+    },
+    "name": "path-intellisense",
+    "publisher": "christian-kohler",
+    "version": "2.3.0"
+  },
+  {
+    "metadata": {
+      "id": "7b71fc1b-190d-4f7d-95d1-93e422649b0a",
+      "publisherId": "Zignd.html-css-class-completion",
+      "publisherDisplayName": "Zignd"
+    },
+    "name": "html-css-class-completion",
+    "publisher": "Zignd",
+    "version": "1.20.0"
+  },
+  {
+    "metadata": {
+      "id": "a2cec723-5349-460d-9de9-0fd1f8d3456f",
+      "publisherId": "xabikos.JavaScriptSnippets",
+      "publisherDisplayName": "xabikos"
+    },
+    "name": "JavaScriptSnippets",
+    "publisher": "xabikos",
+    "version": "1.8.0"
+  },
+  {
+    "metadata": {
+      "id": "b35cd5b4-18db-46f9-ba9e-06096c3b22d3",
+      "publisherId": "msjsdiag.vscode-react-native",
+      "publisherDisplayName": "msjsdiag"
+    },
+    "name": "vscode-react-native",
+    "publisher": "msjsdiag",
+    "version": "1.4.2"
+  },
+  {
+    "metadata": {
+      "id": "876e8f93-74d0-4f4f-91b7-34a09f19f444",
+      "publisherId": "VisualStudioExptTeam.vscodeintellicode",
+      "publisherDisplayName": "VisualStudioExptTeam"
+    },
+    "name": "vscodeintellicode",
+    "publisher": "VisualStudioExptTeam",
+    "version": "1.2.12"
+  }
+]

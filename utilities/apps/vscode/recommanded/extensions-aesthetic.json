@@ -1,0 +1,22 @@
+[
+  {
+    "metadata": {
+      "id": "9ccc1dd7-7ec4-4a46-bd4f-7d7b8b9d322a",
+      "publisherId": "vscode-icons-team.vscode-icons",
+      "publisherDisplayName": "vscode-icons-team"
+    },
+    "name": "vscode-icons",
+    "publisher": "vscode-icons-team",
+    "version": "11.4.0"
+  },
+   {
+    "metadata": {
+      "id": "5a7017bf-c571-4d77-b902-6e56b16f539a",
+      "publisherId": "johnpapa.vscode-peacock",
+      "publisherDisplayName": "johnpapa"
+    },
+    "name": "vscode-peacock",
+    "publisher": "johnpapa",
+    "version": "3.9.1"
+  }
+]

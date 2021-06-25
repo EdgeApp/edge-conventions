@@ -1,0 +1,112 @@
+[
+  {
+    "metadata": {
+      "id": "67e66172-30c7-4478-8f5d-6eac4ae755dc",
+      "publisherId": "mohsen1.prettify-json",
+      "publisherDisplayName": "mohsen1"
+    },
+    "name": "prettify-json",
+    "publisher": "mohsen1",
+    "version": "0.0.3"
+  },
+   {
+    "metadata": {
+      "id": "dda49fd5-1f3b-4d25-bf61-4fc41905ede5",
+      "publisherId": "humao.rest-client",
+      "publisherDisplayName": "humao"
+    },
+    "name": "rest-client",
+    "publisher": "humao",
+    "version": "0.24.5"
+  },
+  {
+    "metadata": {
+      "id": "a6a0c5b2-d078-4bf5-a9ee-4e37054414b3",
+      "publisherId": "formulahendry.code-runner",
+      "publisherDisplayName": "formulahendry"
+    },
+    "name": "code-runner",
+    "publisher": "formulahendry",
+    "version": "0.11.3"
+  },
+  {
+    "metadata": {
+      "id": "1ec62ca5-d7f9-4ddb-a882-e8d018c0aefd",
+      "publisherId": "msjsdiag.debugger-for-chrome",
+      "publisherDisplayName": "msjsdiag"
+    },
+    "name": "debugger-for-chrome",
+    "publisher": "msjsdiag",
+    "version": "4.12.12"
+  },
+  {
+    "metadata": {
+      "id": "76fbde36-77d4-4688-b1f8-202727442961",
+      "publisherId": "tht13.html-preview-vscode",
+      "publisherDisplayName": "tht13"
+    },
+    "name": "html-preview-vscode",
+    "publisher": "tht13",
+    "version": "0.2.5"
+  },
+  {
+    "metadata": {
+      "id": "36d19e17-7569-4841-a001-947eb18602b2",
+      "publisherId": "ms-vscode.node-debug2",
+      "publisherDisplayName": "ms-vscode"
+    },
+    "name": "node-debug2",
+    "publisher": "ms-vscode",
+    "version": "1.42.6"
+  },
+  {
+    "metadata": {
+      "id": "79afa437-682e-4fa2-a4fd-87844832a1dc",
+      "publisherId": "ryu1kn.partial-diff",
+      "publisherDisplayName": "ryu1kn"
+    },
+    "name": "partial-diff",
+    "publisher": "ryu1kn",
+    "version": "1.4.3"
+  },
+  {
+    "metadata": {
+      "id": "40d39ce9-c381-47a0-80c8-a6661f731eab",
+      "publisherId": "ms-vscode.powershell",
+      "publisherDisplayName": "ms-vscode"
+    },
+    "name": "powershell",
+    "publisher": "ms-vscode",
+    "version": "2021.2.2"
+  },
+  {
+    "metadata": {
+      "id": "0479fc1c-3d67-49f9-b087-fb9069afe48f",
+      "publisherId": "ms-azuretools.vscode-docker",
+      "publisherDisplayName": "ms-azuretools"
+    },
+    "name": "vscode-docker",
+    "publisher": "ms-azuretools",
+    "version": "1.12.1"
+  },
+  {
+    "metadata": {
+      "id": "c46b0018-f317-4b6c-a785-d2039b27338f",
+      "publisherId": "wix.vscode-import-cost",
+      "publisherDisplayName": "wix"
+    },
+    "name": "vscode-import-cost",
+    "publisher": "wix",
+    "version": "2.15.0"
+  },
+  {
+    "metadata": {
+      "id": "ff96f1b4-a4b8-45ef-8ecf-c232c0cb75c8",
+      "publisherId": "hbenl.vscode-test-explorer",
+      "publisherDisplayName": "hbenl"
+    },
+    "name": "vscode-test-explorer",
+    "publisher": "hbenl",
+    "version": "2.19.6"
+  }
+]
