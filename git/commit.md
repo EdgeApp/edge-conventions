@@ -46,11 +46,11 @@ git commit -m "Add NEW_WALLET action to global action file and add NEW_WALLET ac
 git commit -m "Add NEW_WALLET action and action creator"
 ```
 
-### Capitalize the subject line
+### Capitalize the first letter of the first word in the subject line
 
 ```bash
 # incorrect
-git commit -m "accelerate to 88 miles per hours"
+git commit -m "accelerate to 88 miles per hour"
 ```
 
 ```bash
