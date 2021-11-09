@@ -12,49 +12,45 @@
   * [Don't](#dont)
 * [Scripts](#scripts)
 
-&nbsp;
+The purpose of this document is to outline the code conventions used by all Edge JavaScript projects. It lists the recommendations for utilities, formatting, scripts, etc.
 
-## All Edge javascript projects shall use the following utilities
+---
 
-----
+## Testing
 
-### Testing
+### [Jest][Jest]
 
-#### [Jest][Jest]
-
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Usage
+#### Usage
 
 ```javascript
 // package.json
 "test": "jest"
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
 
-&nbsp;
+---
 
-### Type Checking
+## Type Checking
 
-#### [Flow][Flow]
+### [Flow][Flow]
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Usage
+#### Usage
 
 ```javascript
 // package.json
 "flow": "flow"
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Commit Hooks
+## Commit Hooks
 
-#### [Husky][Husky]
+### [Husky][Husky]
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Installing
 
@@ -63,20 +59,20 @@ yarn add -D husky
 
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Usage
+#### Usage
 
 ```javascript
 // package.json
 "pre-push": "yarn test"
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Formatting
+## Formatting
 
 * [eslint-config-standard-kit][eslint-config-standard-kit] - [github](https://github.com/swansontec/eslint-config-standard-kit/)
 * [Eslint][Eslint] - [github](https://github.com/eslint/eslint)
@@ -113,17 +109,17 @@ yarn add -D husky
   }
   ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Dependencies
+## Dependencies
 
 All dependencies should be defined with their full URLs or NPM package version. [GitHub short-hand URLs](https://docs.npmjs.com/cli/v6/configuring-npm/package-json#github-urls) should not be used due to an [outstanding issue with Yarn not running prepare/prepack](https://github.com/yarnpkg/yarn/issues/5235#issue-289053582) for these types of dependencies.
 
-#### Do
+### Do
 
 ```json
 {
@@ -144,13 +140,13 @@ All dependencies should be defined with their full URLs or NPM package version. 
 }
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Scripts
+## Scripts
 
 Each repo should have the following package.json scripts which accomplish the following:
 
@@ -163,7 +159,7 @@ Each repo should have the following package.json scripts which accomplish the fo
 
 [Back to the top](#--javascript-project-setup-conventions)
 
-&nbsp;
+---
 
 [eslint-config-standard-kit]: https://www.swansontec.com/eslint-config-standard-kit/
 [Eslint]: https://eslint.org/
