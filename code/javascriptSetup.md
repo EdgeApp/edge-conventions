@@ -1,4 +1,4 @@
-# [<](README.md) &nbsp; Javascript Project Setup Conventions
+# [<](README.md) &nbsp; JavaScript Project Setup Conventions
 
 * [Package Management](#package-management)
   * [Yarn](#yarn)

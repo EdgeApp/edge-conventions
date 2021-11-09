@@ -4,8 +4,8 @@
 
 * [Documentation Conventions](docs.md)
 * [Code](code/README.md)
-  * [Javascript Code Conventions](code/javascriptCode.md)
-  * [Javascript Project Setup Conventions](code/javascriptSetup.md)
+  * [JavaScript Code Conventions](code/javascriptCode.md)
+  * [JavaScript Project Setup Conventions](code/javascriptSetup.md)
   * [React Conventions](code/react.md)
   * [Redux Conventions](code/redux.md)
   * [Server Conventions](code/server.md)
