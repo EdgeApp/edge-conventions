@@ -1,5 +1,8 @@
 # [<](README.md) &nbsp; Javascript Project Setup Conventions
 
+* [Package Management](#package-management)
+  * [Yarn](#yarn)
+  * [Security Configuration](#security-configuration)
 * [Testing](#testing)
   * [Jest](#jest)
 * [Type Checking](#type-checking)
@@ -15,6 +18,33 @@
 The purpose of this document is to outline the code conventions used by all Edge JavaScript projects. It lists the recommendations for utilities, formatting, scripts, etc.
 
 ---
+
+## Package Management
+
+### [Yarn][yarn]
+
+We use [Yarn v1](yarn) to manage our package dependencies. 
+All repositories should commit a `.yarnrc` file with at least the following:
+
+```yarnrc
+--ignore-scripts true
+```
+
+This will prevent scripts from running during package installation.
+As a security measure, we do not allow scripts to run after package installation.
+All build scripts should run with `yarn prepare`, separate from `yarn`.
+
+### Security Configuration
+
+Every developer _must_ run `yarn config set ignore-scripts true` on their local development environment.
+This prevents scripts from running during package installation for any project missing a properly configured `.yarnrc` (whether Edge's repo or a 3rd-party's).
+A shell alias which combines `yarn install` and `yarn prepare` may be added to a developers shell config for convenience.
+For example, add to your `.zshrc` or `.bashrc`:
+
+```sh
+alias yip='yarn && yarn prepare'
+```
+
 
 ## Testing
 
@@ -161,6 +191,7 @@ Each repo should have the following package.json scripts which accomplish the fo
 
 ---
 
+[yarn]: https://classic.yarnpkg.com/lang/en/
 [eslint-config-standard-kit]: https://www.swansontec.com/eslint-config-standard-kit/
 [Eslint]: https://eslint.org/
 [Prettier]: https://prettier.io/
