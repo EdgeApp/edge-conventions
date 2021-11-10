@@ -1,4 +1,4 @@
-# [<](README.md) &nbsp; Javascript Code Conventions
+# [<](README.md) &nbsp; JavaScript Code Conventions
 
 * [File Names](#file-names)
 * [Comments](#comments)

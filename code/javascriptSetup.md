@@ -1,5 +1,8 @@
-# [<](README.md) &nbsp; Javascript Project Setup Conventions
+# [<](README.md) &nbsp; JavaScript Project Setup Conventions
 
+* [Package Management](#package-management)
+  * [Yarn](#yarn)
+  * [Security Configuration](#security-configuration)
 * [Testing](#testing)
   * [Jest](#jest)
 * [Type Checking](#type-checking)
@@ -12,49 +15,72 @@
   * [Don't](#dont)
 * [Scripts](#scripts)
 
-&nbsp;
+The purpose of this document is to outline the code conventions used by all Edge JavaScript projects. It lists the recommendations for utilities, formatting, scripts, etc.
 
-## All Edge javascript projects shall use the following utilities
+---
 
-----
+## Package Management
 
-### Testing
+### [Yarn][yarn]
 
-#### [Jest][Jest]
+We use [Yarn v1](yarn) to manage our package dependencies. 
+All repositories should commit a `.yarnrc` file with at least the following:
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Usage
+```yarnrc
+--ignore-scripts true
+```
+
+This will prevent scripts from running during package installation.
+As a security measure, we do not allow scripts to run after package installation.
+All build scripts should run with `yarn prepare`, separate from `yarn`.
+
+### Security Configuration
+
+Every developer _must_ run `yarn config set ignore-scripts true` on their local development environment.
+This prevents scripts from running during package installation for any project missing a properly configured `.yarnrc` (whether Edge's repo or a 3rd-party's).
+A shell alias which combines `yarn install` and `yarn prepare` may be added to a developers shell config for convenience.
+For example, add to your `.zshrc` or `.bashrc`:
+
+```sh
+alias yip='yarn && yarn prepare'
+```
+
+
+## Testing
+
+### [Jest][Jest]
+
+#### Usage
 
 ```javascript
 // package.json
 "test": "jest"
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
 
-&nbsp;
+---
 
-### Type Checking
+## Type Checking
 
-#### [Flow][Flow]
+### [Flow][Flow]
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Usage
+#### Usage
 
 ```javascript
 // package.json
 "flow": "flow"
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Commit Hooks
+## Commit Hooks
 
-#### [Husky][Husky]
+### [Husky][Husky]
 
 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Installing
 
@@ -63,20 +89,20 @@ yarn add -D husky
 
 ```
 
-&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Usage
+#### Usage
 
 ```javascript
 // package.json
 "pre-push": "yarn test"
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Formatting
+## Formatting
 
 * [eslint-config-standard-kit][eslint-config-standard-kit] - [github](https://github.com/swansontec/eslint-config-standard-kit/)
 * [Eslint][Eslint] - [github](https://github.com/eslint/eslint)
@@ -113,17 +139,17 @@ yarn add -D husky
   }
   ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Dependencies
+## Dependencies
 
 All dependencies should be defined with their full URLs or NPM package version. [GitHub short-hand URLs](https://docs.npmjs.com/cli/v6/configuring-npm/package-json#github-urls) should not be used due to an [outstanding issue with Yarn not running prepare/prepack](https://github.com/yarnpkg/yarn/issues/5235#issue-289053582) for these types of dependencies.
 
-#### Do
+### Do
 
 ```json
 {
@@ -144,13 +170,13 @@ All dependencies should be defined with their full URLs or NPM package version. 
 }
 ```
 
-----
-
 [Back to the top](#--javascript-project-setup-conventions)
+
+---
 
 &nbsp;
 
-### Scripts
+## Scripts
 
 Each repo should have the following package.json scripts which accomplish the following:
 
@@ -163,8 +189,9 @@ Each repo should have the following package.json scripts which accomplish the fo
 
 [Back to the top](#--javascript-project-setup-conventions)
 
-&nbsp;
+---
 
+[yarn]: https://classic.yarnpkg.com/lang/en/
 [eslint-config-standard-kit]: https://www.swansontec.com/eslint-config-standard-kit/
 [Eslint]: https://eslint.org/
 [Prettier]: https://prettier.io/
