@@ -8,9 +8,7 @@
   - [Step 2: Moving the dependent feature branch](#step-2-moving-the-dependent-feature-branch)
 - [Removing Future Commits](#removing-future-commits)
 - [Review Conventions](#review-conventions)
-- [Git Aliases](#git-aliases)
-  - [git future [\<future-branch>] [\<feature-branch>]](#git-future-future-branch-feature-branch)
-  - [git portal \<future-branch> [\<feature-branch>]](#git-portal-future-branch-feature-branch)
+- [Git Alias](#git-alias)
 
 &nbsp;
 
@@ -151,59 +149,110 @@ The PR should be converted to "Open" once all the future commits have been remov
 
 &nbsp;
 
-## Git Aliases
+## Git Alias
 
-To make our lives a bit easier, here are two git aliases which can replace the two most tricky set of git commands. Add these git aliases to your `~/.gitconfig` file.
+To make our lives a bit easier, here is a git alias which can be used to aid your workflow. Add this git alias to your `~/.gitconfig` file.
 
-### git future [\<future-branch>] [\<feature-branch>]
-
-```sh
-[alias]
-  future = "!f(){ \
-      futureBranch=${1:-$(git branch --show-current)}; \
-      featureBranch=$2; \
-      git checkout master --detach; \
-      git merge --no-ff -m\"future! $futureBranch\" $futureBranch && ( \
-        git tag -f future/$futureBranch; \
-        test $featureBranch && ( \
-          git checkout -b $featureBranch || \
-            git portal $futureBranch $featureBranch; \
-        ) \
-      ) \
-    }; f"
-```
-
-This alias creates a new future commit for the given `<future-branch>` argument with a `future/<future-branch>` tag referencing the future commit.
-If no `<future-branch>` argument is given, it will default to the current checked out branch.
-
-If the `<feature-branch>` optional argument is provided, it'll either create a new branch at the future commit using this argument as it's name if branch doesn't exists, otherwise it'll rebase the existing branch onto the new future commit using `git portal` (see below).
-
-### git portal \<future-branch> [\<feature-branch>]
+### git future [\<base-branch>] [\<future-branch>] [\<feature-branch>]
 
 ```sh
 [alias]
-  portal = "!f(){ \
-    futureBranch=$1; \
-    featureBranch=${2:-$(git branch --show-current)}; \
-    test $featureBranch && ( \
-      git rev-parse \"$featureBranch^{/future! $futureBranch}\" &> /dev/null && ( \
-        git rebase --onto \"future/$futureBranch\" \"$featureBranch^{/future! $futureBranch}\" \"$featureBranch\"; \
-      ) || ( \
-        git rebase \"future/$futureBranch\" \"$featureBranch\"; \
-      ) \
-    ) || ( \
-      echo \"Cannot omit feature branch while in detached HEAD\n\ngit portal $futureBranch <feature-branch>\" &&  \
-      exit 1; \
-    ) \
+  future = "!f(){\
+    git haschanges && echo \"Cannot complete with changes in working tree\" && exit 1;\
+    baseBranch=${1:-master};\
+    futureBranch=${2:-$(git branch --show-current)};\
+    featureBranch=$3;\
+    if [ $baseBranch == $futureBranch ]; then echo \"base branch '$baseBranch' matches future-branch '$futureBranch'\"; exit 1; fi;\
+    git checkout -b future/$futureBranch || git checkout future/$futureBranch;\
+    git reset --hard $baseBranch;\
+    git merge --no-ff -m\"future! $futureBranch\" $futureBranch && (\
+      test $featureBranch && (\
+        git checkout -b $featureBranch || \
+          git rev-parse \"$featureBranch^{/future! $futureBranch}\" &> /dev/null && (\
+            git rebase --preserve-merges --onto \"future/$futureBranch\" \"$featureBranch^{/future! $futureBranch}\" \"$featureBranch\"\
+          ) || (\
+            git rebase --preserve-merges \"future/$futureBranch\" \"$featureBranch\"\
+          )\
+      )\
+    )\
   }; f"
 ```
 
-This alias moves the `<feature-branch>` to the current future commit for `<future-branch>`. This works by rebasing `<feature-branch>` onto the commit where `future/<future-branch>` tag references.
+This alias creates a new future-commit (merge commit) on top of the given `<base-branch>` for the given `<future-branch>`.
+It will also maintain that the branch `future/<future-branch>` points to the future-commit; creating the branch if it doesn't exist, or hard-reseting the branch if it does exist.
 
-This effectively takes care of step 2 of Rewriting History mentioned above.
+The third argument, `<feature-branch>` is an optional feature branch which depends on the future-commit.
+If provided, this branch will be rebased onto the future-commit.
 
-If `<feature-branch>` argument is omitted, then it'll use the currently checked out branch as the feature branch.
+#### Optionality
 
-In addition, if `<feature-branch>` does not have a future commit for the `<future-branch>` in its upstream, then it will rebase normally; that is, all the way to the fork of the two branches. This is useful for rebasing existing branches onto some new dependency branch.
+If no `<base-branch>` argument is given, it will default to `master`.
+
+If no `<future-branch>` argument is given, it will default to the current checked out branch.
+
+If no `<feature-branch>` argument is give, it will have no rebase effects.
+
+#### Usage `git future main`
+
+With `my-feature` checked out:
+
+```txt
+from:
+
+--(main)
+        \
+         (a)---(b)---(my-feature)
+
+to:
+
+--(main)--------------------------(future/my-feature)
+        \                        /
+         (a)---(b)---(my-feature)
+```
+
+#### Usage `git future main my-feature`
+
+Same as `git future main` when `my-feature` is checked out, but any branch may be checked.
+
+#### Usage `git future main my-feature my-other-feature`
+
+Rebases `my-other-feature` branch onto the a newly created future-commit all at once:
+
+```txt
+from:
+
+--(main)
+       |\
+       | (a)---(b)---(my-feature)
+        \
+         (c)---(d)---(my-other-feature)
+
+to:
+
+--(main)--------------------------(future/my-feature)---(c)---(d)---(my-other-feature)
+        \                        /
+         (a)---(b)---(my-feature)
+```
+
+Also, useful to be able to update the `<feature-branch>` to a new future-branch/future-commit:
+
+
+```txt
+from:
+
+--(main)--------------------------(future/my-feature)
+      ||\                        /
+      || (a)---(b)---(my-feature)
+      | \
+      |  *-----------------------------------------(<old future-commit>)---(c)---(d)---(my-other-feature)
+       \                                          /
+        (old a)---(old b)---(old my-other-feature)
+
+to:
+
+--(main)--------------------------(future/my-feature)---(c)---(d)---(my-other-feature)
+        \                        /
+         (a)---(b)---(my-feature)
+```
 
 [Back to the top](#--git-"future-commit"-workflow)
