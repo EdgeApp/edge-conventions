@@ -169,9 +169,9 @@ To make our lives a bit easier, here is a git alias which can be used to aid you
       test $featureBranch && (\
         git checkout -b $featureBranch || \
           git rev-parse \"$featureBranch^{/future! $futureBranch}\" &> /dev/null && (\
-            git rebase --preserve-merges --onto \"future/$futureBranch\" \"$featureBranch^{/future! $futureBranch}\" \"$featureBranch\"\
+            git rebase --rebase-merges --onto \"future/$futureBranch\" \"$featureBranch^{/future! $futureBranch}\" \"$featureBranch\"\
           ) || (\
-            git rebase --preserve-merges \"future/$futureBranch\" \"$featureBranch\"\
+            git rebase --rebase-merges \"future/$futureBranch\" \"$featureBranch\"\
           )\
       )\
     )\
