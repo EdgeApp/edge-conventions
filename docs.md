@@ -37,18 +37,18 @@ ${table_of_content}
 
 ${content}
 
-[Back to the top](#--${main_header_dashed})
+[Back to the top](#--${main_header_lowercased_dashed})
 
 ```
 
 - main_header - The main title name for the page.\
-For example for this page it's: "Developer Documentation Guidelines")
+For example for this page it's: "Documentation Conventions")
 
-- main_header_dashed - the same as the "main_header" only all lower caps and separated by dashes instead of spaces.\
-For example for this page it's: "developer-documentation-guidelines")
+- main_header_lowercased_dashed - the same as the "main_header" only all lower caps and separated by dashes instead of spaces.\
+For example for this page it's: "documentation-conventions")
 
 - table_of_content (Optional) - If needed (page is long) add table of content for the page.
 
 - content - The actual content of the page which should only use "native" markdown syntax, without any html tags.
 
-[Back to the top](#--conventions-documentation-guidelines)
+[Back to the top](#--documentation-conventions)
