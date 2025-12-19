@@ -171,9 +171,23 @@ Put your commits in some sort of logical order, for example:
 3. Implement the feature
 4. Remove old code that was replaced
 
-> Renaming files or variables should always happen in their own commits, separate from any code changes.
->
-> – <cite>Paul Puey</cite>
+Renaming files or variables should always happen in their own commits, separate from any code changes.
+
+### Work-in-Progress Commits
+
+When working on a feature that is not yet complete, you may use "WIP" as a prefix in the commit message:
+
+```bash
+# acceptable for incomplete work
+git commit -m "WIP Theme server in Settings"
+```
+
+However, WIP commits should be cleaned up before creating a pull request. Use interactive rebase to either:
+- Complete the work and update the commit message
+- Split the WIP commit into logical, complete commits
+- Remove the WIP prefix once the work is complete
+
+WIP commits are useful for saving progress but should not be included in pull requests unless the PR is explicitly marked as a draft for early feedback.
 
 ### Clean Commit Principles
 
@@ -212,7 +226,7 @@ If it’s complex:
 #### Joining commits
 
 - Use the "fixup" or "f" command to join two commits keeping the first commit message
-- Use the "squash" or "s" command to join two commits and edit the commit message 
+- Use the "squash" or "s" command to join two commits and edit the commit message
 - Use “fixup!” “squash!” in your commit message and add `--autosquash` to your rebase command to tell git to automatically use these commands in your rebase.
 
 #### Editing commits
