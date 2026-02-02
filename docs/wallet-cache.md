@@ -192,6 +192,7 @@ Once a wallet is started (explicitly via `startEngine()`):
 class CachedWallet {
   private enginePromise: Promise<EdgeCurrencyEngine> | undefined
   private started: boolean = false
+  private engineStarted: boolean = false
 
   private async ensureEngine(): Promise<EdgeCurrencyEngine> {
     if (this.enginePromise == null) {
@@ -202,8 +203,9 @@ class CachedWallet {
 
   private async createEngine(): Promise<EdgeCurrencyEngine> {
     const engine = await plugin.makeCurrencyEngine(...)
-    // Only trigger startEngine if wallet is in started state
-    if (this.started) {
+    // Only trigger startEngine if wallet is in started state and engine not already started
+    if (this.started && !this.engineStarted) {
+      this.engineStarted = true
       engine.startEngine().catch(err => log.error(err))
     }
     return engine
@@ -214,7 +216,10 @@ class CachedWallet {
     this.started = true
     if (this.enginePromise != null) {
       const engine = await this.enginePromise
-      engine.startEngine().catch(err => log.error(err))
+      if (!this.engineStarted) {
+        this.engineStarted = true
+        engine.startEngine().catch(err => log.error(err))
+      }
     }
   }
 
