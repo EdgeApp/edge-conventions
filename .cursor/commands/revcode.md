@@ -4,4 +4,4 @@ Review code changes for quality and convention compliance. Supports both GitHub 
 
 ## Instructions
 
-Follow the `@.cursor/skills/rev-code/SKILL.md` skill to execute this command.
+Follow the `@.cursor/skills/review-code/SKILL.md` skill to execute this command.

@@ -169,8 +169,8 @@ Provide a structured review with:
 - **Conventions Checklist**: Which conventions were checked and passed/failed
 
 Save the review to a markdown document in the system temp directory (`/tmp` on macOS/Linux), then open it in Cursor for the user to review. Name the document:
-- **For PRs**: `[repository-name]_[branch-name]_pr-[pr-number].md`
-- **For local branches**: `[repository-name]_[branch-name]_review.md`
+- **For PRs**: `[repository-name]_[branch-name]_pr-[pr-number]-MMDDhhmm.md`
+- **For local branches**: `[repository-name]_[branch-name]_review-MMDDhhmm.md`
 
 Pause for the user to review.
 
