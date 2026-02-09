@@ -20,9 +20,8 @@ Identify the repository name and owner from the PR URL or context.
 
 Use the GitHub MCP server to fetch reviewer comments from the PR:
 
-1. Read the tool schema first: `/Users/paul/.cursor/projects/Users-paul-git-edge-react-gui/mcps/user-github/tools/`
-2. Fetch PR details and all review comments
-3. Look for:
+1. Fetch PR details and all review comments using the GitHub MCP tools
+2. Look for:
    - Line-level review comments
    - General PR comments with actionable feedback
    - Requested changes from reviewers
@@ -93,16 +92,17 @@ Once the user approves the plan, process each fix item:
 For each fix in the plan:
 
 1. Save the current branch head hash as `BRANCHHEAD`
-2. Save the hash of the commit to fix as `FIXUPHASH`
-3. Check out the commit needing changes: `git checkout ${FIXUPHASH}`
-4. Make the necessary code changes (edit files, stage them)
-5. Test changes with `yarn precommit` and fix any failures
-6. Stage and create the fixup commit: `git add -A && git commit --fixup HEAD --no-verify`
-7. Cherry-pick remaining commits: `git cherry-pick "${FIXUPHASH}..${BRANCHHEAD}"`
-8. Resolve any conflicts
-9. Update the branch to the new history: `git checkout -B <branch-name>`
+2. Re-identify the commit to fix by examining `git log --oneline` and matching the commit message or content from the plan (original commit hashes become stale after history rewrites)
+3. Save the newly identified hash as `FIXUPHASH`
+4. Check out the commit needing changes: `git checkout ${FIXUPHASH}`
+5. Make the necessary code changes (edit files, stage them)
+6. Test changes with `yarn precommit` and fix any failures
+7. Stage and create the fixup commit: `git add -A && git commit --fixup HEAD --no-verify`
+8. Cherry-pick remaining commits: `git cherry-pick "${FIXUPHASH}..${BRANCHHEAD}"`
+9. Resolve any conflicts
+10. Update the branch to the new history: `git checkout -B <branch-name>`
 
-Repeat for each fix item.
+Repeat for each fix item. **Important**: After each iteration, the branch history is rewritten, so commit hashes from the original plan are no longer valid. Always re-identify commits using `git log` at the start of each iteration.
 
 ## Pushing Changes to GitHub
 

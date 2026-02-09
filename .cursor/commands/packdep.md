@@ -14,5 +14,6 @@ For each dependency repo specified in the prompt:
    ```json
    "edge-core-js": "./edge-core-js-2.38.4-20260202T0406.tgz"
    ```
+6. Run `yarn` in the edge-react-gui directory to install the local tarball into `node_modules`
 
 Repeat for all dependency repos mentioned in the prompt.
