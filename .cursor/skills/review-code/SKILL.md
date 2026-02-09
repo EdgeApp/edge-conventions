@@ -168,9 +168,15 @@ Provide a structured review with:
 - **Suggestions**: Consider for improvement
 - **Conventions Checklist**: Which conventions were checked and passed/failed
 
-Save the review to a markdown document in the system temp directory (`/tmp` on macOS/Linux), then open it in Cursor for the user to review. Name the document:
-- **For PRs**: `[repository-name]_[branch-name]_pr-[pr-number]-MMDDhhmm.md`
-- **For local branches**: `[repository-name]_[branch-name]_review-MMDDhhmm.md`
+Save the review to a markdown document in the system temp directory (`/tmp` on macOS/Linux), then open it in the current Cursor workspace for the user to review:
+
+```bash
+cursor --reuse-window <review-document-path>
+```
+
+Name the document:
+- **For PRs**: `MMDDhhmm_[repository-name]_[branch-name]_pr-[pr-number].md`
+- **For local branches**: `MMDDhhmm_[repository-name]_[branch-name]_review.md`
 
 Pause for the user to review.
 

@@ -42,7 +42,7 @@ Skip comments where:
 
 ### Plan Document Format
 
-Name the document: `[repository-name]_[branch-name]_pr-[pr-number]_fixplan-MMDDhhmm.md`
+Name the document: `MMDDhhmm_[repository-name]_[branch-name]_pr-[pr-number]_fixplan.md`
 
 Structure the plan as:
 
@@ -71,7 +71,10 @@ Structure the plan as:
 ...
 ```
 
-4. Open the plan document in Cursor for the user to review
+4. Open the plan document in the current Cursor workspace for the user to review:
+   ```bash
+   cursor --reuse-window <plan-document-path>
+   ```
 
 ## User Iteration
 
