@@ -16,3 +16,5 @@
 * [Utilities](utilities/README.md)
   * [Recommended Applications](utilities/apps.md)
   * [Edge Libraries](utilities/libs.md)
+* [Workflows](workflows/README.md)
+  * [Develop to Staging](workflows/develop-to-staging.md)
