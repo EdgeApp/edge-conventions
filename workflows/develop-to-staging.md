@@ -67,8 +67,22 @@ Checkout staging branch and run:
 git merge -X theirs develop
 ```
 
+Assert that staging and develop are identical:
+
+```sh
+git diff develop
+```
+
+If there is any diff, some changes from develop were not applied during the merge (e.g. non-conflicting changes that were dropped). Manually apply the missing changes on staging and commit them before continuing.
+
 Check that all checks pass before pushing:
 
 ```sh
 yarn verify
+```
+
+Push staging to publish:
+
+```sh
+git push
 ```
