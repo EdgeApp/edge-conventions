@@ -1,0 +1,199 @@
+---
+description: Review-specific coding conventions for Edge codebase PR reviews. Load alongside typescript-standards.mdc during code review.
+globs: []
+alwaysApply: false
+---
+
+<goal>Provide project-specific review patterns to detect in PR code — anti-patterns and conventions that go beyond the editing standards in typescript-standards.mdc.</goal>
+
+<section name="Error Handling">
+
+<rule id="preserve-stack-traces">Don't use shorthand `.catch(showError)` — it loses the calling file from stack traces.
+❌ `doSomething().catch(showError)`
+✅ `doSomething().catch((error: unknown) => showError(error))`
+</rule>
+
+<rule id="avoid-ts-expect-error">Don't double down on `@ts-expect-error` when trivial fixes exist. Use `?? []`, `?? {}`, or explicit type annotations instead of suppressing type errors.</rule>
+
+<rule id="undefined-vs-null-semantics">Use `!== undefined` when `null` has semantic meaning (like "delete this field"). `!= null` treats both the same.
+❌ `const changed = value != null` (when null means "delete")
+✅ `const changed = value !== undefined`
+</rule>
+
+<rule id="always-await-async">Always `await` async operations for proper spinners, double-click prevention, and race condition avoidance.
+❌ `wallet.saveTxMetadata(params).catch(showError)`
+✅ `await wallet.saveTxMetadata(params)`
+</rule>
+
+<rule id="no-redundant-catch">When the whole function is async and the caller handles errors, don't add a separate `.catch()`.
+❌ `const handle = async () => { await op().catch(err => showError(err)) }`
+✅ `const handle = async () => { await op() }`
+</rule>
+
+<rule id="tokenid-no-null-fallback">When `tokenId` is a non-null string, any dereference using it must succeed or throw. Never fall back to `null` — it silently changes the intended asset from "this specific token" to "native currency."</rule>
+
+<rule id="no-redundant-error-handling">When a global error handler (e.g., `withExtendedTouchable`) already catches and displays errors, don't add local `.catch(showError)` — it causes errors to display twice. Only add explicit handling when you need specific error types, cleanup, or there's no global handler.</rule>
+
+<rule id="handle-user-cancellation">User cancellations (closing modals, pressing back) should exit silently, not show a generic error.
+❌ `try { await modal() } catch (error) { showError(error) }`
+✅ `if (error instanceof UserCancelledError) return; showError(error)`
+</rule>
+
+<rule id="dont-mask-errors">Catch blocks should not always throw the same generic error. Only throw specific messages for expected errors (e.g., API 400); re-throw the original for unexpected ones so users see accurate messages.</rule>
+
+<rule id="check-array-bounds">Verify arrays have elements before indexing. `vin.addresses[0]` is `undefined` when the array is empty — check before passing to functions that can't handle undefined.</rule>
+
+<rule id="compare-same-types">Don't compare tokenIds with currency codes — they are different identifier types that will never match. Use `request.fromTokenId` when checking against a list of tokenIds, not `request.fromCurrencyCode`.</rule>
+
+<rule id="lookup-table-defensive-access">Use optional chaining on lookup tables with dynamic keys.
+❌ `TABLE[pluginId].includes(tokenId)` (TypeError if key missing)
+✅ `TABLE[pluginId]?.includes(tokenId) ?? false`
+</rule>
+
+<rule id="consolidate-guard-clauses">If a validation applies to all code paths, perform it once at function entry rather than repeating in each branch.</rule>
+
+</section>
+
+<section name="React & UI">
+
+<rule id="useHandler-over-useCallback">Prefer `useHandler` (from `hooks/useHandler`) over `useCallback` for event handlers and async functions. Provides better TypeScript inference and handles async more gracefully.</rule>
+
+<rule id="combine-related-effects">If two `useEffect` hooks update related state from related dependencies, combine them into one effect to avoid redundant renders.</rule>
+
+<rule id="display-logic-extraction">Extract complex display logic to helper functions with early returns instead of nested ternaries or inline conditional chains.</rule>
+
+<rule id="stylesheet-compose">Use `StyleSheet.compose(baseStyle, customStyle)` for style composition. Handles null automatically — no manual array handling needed.</rule>
+
+<rule id="platform-keyboard">iOS number-pad keyboards don't support certain `returnKeyType` values ("Can't find keyplane" warning). Conditionally set: `returnKeyType={Platform.OS === 'ios' ? undefined : 'done'}`</rule>
+
+<rule id="preserve-props-replacement">When replacing one component with another, ensure all props (color, size, style) are carried over. Check the original component's props before replacing — missing visual props change appearance.</rule>
+
+<rule id="maintain-styling-icon-switch">When switching icon libraries, wrap replacement icons in a `View` with the original margin/padding styles if the new component doesn't accept the same style props.</rule>
+
+<rule id="interactionmanager-nav">Wrap navigation calls (push, pop, replace) after complex gestures (slider completion, swipe) in `InteractionManager.runAfterInteractions()`. Navigating while the gesture system is active causes crashes on physical devices.</rule>
+
+<rule id="disable-ui-async">Disable interactive elements during async operations to prevent double-taps and race conditions. Use a `pending` state and pass it to the component for visual feedback.</rule>
+
+</section>
+
+<section name="State Management">
+
+<rule id="no-duplicate-redux-local">Don't track Redux state locally with `useState(reduxValue)` — it becomes stale when Redux updates. Read from `useSelector` directly.</rule>
+
+<rule id="module-level-cache-bugs">Module-level cached state that doesn't reset on logout/login leaks data between users. Export a clear function and call it on logout. This is a recurring bug pattern.</rule>
+
+<rule id="settings-in-redux">Local account settings belong in Redux, not separate module-level caches. Redux is the right place for globally-available account information.</rule>
+
+<rule id="datastore-api">Use `account.dataStore.setItem/getItem` instead of `account.localDisklet` directly. Disklet filenames are stored in plaintext, leaking information the server shouldn't see. DataStore encrypts filenames.</rule>
+
+<rule id="data-format-migrations">When changing storage formats, always include migration code: read old format, convert, write new format, delete old. Users have existing data on disk.</rule>
+
+<rule id="merge-state-objects">When updating nested state objects in storage, merge with existing state to avoid overwriting concurrent updates from other parts of the app.
+❌ `notifState: newNotifState` (overwrites sibling keys)
+✅ `notifState: { ...settings.notifState, ...newNotifState }`
+</rule>
+
+</section>
+
+<section name="Async & Concurrency">
+
+<rule id="makePeriodicTask">Always use `makePeriodicTask` instead of `setInterval`, especially for async work. Provides proper start/stop lifecycle and handles overlapping invocations.</rule>
+
+<rule id="background-services-location">Background services go in `components/services/` as React components. Component-based mounting ensures clean lifecycle tied to login/logout. Avoid excessive background work — trigger only when needed.</rule>
+
+<rule id="prevent-concurrent-execution">Use a `runOnce` helper or `pending` flag to prevent duplicate parallel calls when functions can be triggered multiple times (button presses, retries).</rule>
+
+<rule id="polling-race-conditions">When implementing cancellable polling, check the cancel flag after every `await`, not just at loop start. The flag can change during any async gap.</rule>
+
+<rule id="refresh-state-callbacks">In `setTimeout`/interval callbacks, read state fresh inside the callback. Closures capture stale values — especially problematic for callbacks that fire much later.</rule>
+
+<rule id="cleanup-timeouts-shutdown">Track `setTimeout` IDs in services/engines with a `Set` and clear them all in the shutdown method. Stale timeouts fire on cleared/deallocated state.</rule>
+
+<rule id="serialize-event-handlers">When async event handlers operate on shared resources (files, git repos, databases), serialize operations per resource using a pending-operation map or queue. Fire-and-forget `.catch()` patterns cause race conditions on rapid events.</rule>
+
+</section>
+
+<section name="Data Validation (Cleaners)">
+
+<rule id="clean-all-external-data">All network responses and disk reads must be cleaned with the cleaners library before use. Access cleaned values, not raw data.</rule>
+
+<rule id="derive-types-from-cleaners">Derive types from cleaners with `ReturnType<typeof asCleaner>`. Don't duplicate type definitions alongside cleaner definitions.</rule>
+
+<rule id="asoptional-handles-null">`asOptional` accepts both `undefined` AND `null` despite the name. To preserve the null/undefined distinction, use `asOptional(asEither(asNull, asString), null)` with a default.</rule>
+
+<rule id="new-fields-optional">New fields added to cleaners for persisted data MUST use `asOptional` unless migration code is included. Existing data on disk won't have the new field — non-optional fields cause load failures.</rule>
+
+<rule id="remove-unused-cleaner-fields">Remove or comment out unused fields in cleaners. Dead cleaner fields add noise and can mislead.</rule>
+
+</section>
+
+<section name="Code Quality">
+
+<rule id="delete-unnecessary-code">Don't leave dead or unused code "just in case." Git history preserves it. This includes unused variables, unreachable branches, and commented-out blocks.</rule>
+
+<rule id="put-parameters-inline">Don't declare variables just to pass them to a function — inline the parameters. Exception: typed constants for functions with untyped/`any` parameters, where the constant provides compile-time checking.</rule>
+
+<rule id="use-existing-helpers">Before creating a new utility, check for existing helpers: `getTokenId`/`getTokenIdForced` instead of `getWalletTokenId`, `getExchangeDenom` instead of custom multiplier lookups.</rule>
+
+<rule id="avoid-duplicated-mocks">Use existing mock data from `src/util/fake/` or consolidate new mocks there. Duplicated half-baked mock data breaks on core changes.</rule>
+
+<rule id="no-hardcoded-debug-urls">Never commit hardcoded sandbox URLs or debug flags. Use environment configuration (`envConfig.*`, `__DEV__`).</rule>
+
+<rule id="no-local-path-deps">Don't use local file paths (`file:../my-package`) in package.json dependencies. Breaks builds for other developers and CI.</rule>
+
+<rule id="guard-debug-logging">No unguarded `console.log` in production code. Guard with `ENV.DEBUG_VERBOSE_LOGGING` or remove entirely.</rule>
+
+<rule id="validation-single-source">Use a single validation function for both real-time and submit-time checks. Duplicated validation with different thresholds lets users submit invalid forms.</rule>
+
+<rule id="local-helpers-amount-conversion">Use local synchronous helpers (`div` from biggystring + `getExchangeDenom`) for amount conversions instead of async wallet API calls that cross an expensive bridge. Always specify decimal precision to avoid integer truncation: `div(native, multiplier, 18)` not `div(native, multiplier)`.</rule>
+
+<rule id="no-hand-rolled-ops">Use established libraries (e.g., `rfc4648` for base64) instead of hand-rolling standard algorithms. Hand-rolled implementations miss edge cases and add maintenance burden.</rule>
+
+<rule id="keep-config-consistent">When a value appears in multiple configuration locations, ensure they match. Extract shared constants to prevent silent drift.</rule>
+
+<rule id="remove-unused-styles">Delete style properties from `StyleSheet.create` that aren't referenced by any component. Unused styles add noise.</rule>
+
+</section>
+
+<section name="Strings & Localization">
+
+<rule id="reuse-existing-strings">Search the localization file (`en_US.json`) before adding new keys. Don't create duplicates of existing strings.</rule>
+
+<rule id="context-based-key-names">String keys describe semantic meaning, not UI location.
+❌ `signup_screen_get_started`
+✅ `get_started_button`
+</rule>
+
+<rule id="avoid-tap-to-x">Prompts describe the action, not the gesture. Doesn't translate well across platforms.
+❌ `"Tap to select a country"`
+✅ `"Select a country"`
+</rule>
+
+<rule id="localization-gui-level">Error messages and user-facing strings are localized in the GUI layer, not in API/plugin code. API layers throw structured errors (e.g., `NetworkError('CONNECTION_FAILED')`) that the GUI translates for display.</rule>
+
+</section>
+
+<section name="Comments & Documentation">
+
+<rule id="add-non-obvious-constraints">Document constraints that aren't obvious from the code: `// EVM-only: assumes EVM contract address format`</rule>
+
+<rule id="remove-stale-comments">Remove comments when the context they describe has changed. Stale comments mislead more than missing comments.</rule>
+
+<rule id="comments-why-not-what">Good comments explain reasoning, not mechanics.
+❌ `// Loop through items and filter by status`
+✅ `// Only active items can be edited; archived items are read-only`
+</rule>
+
+</section>
+
+<section name="Server Conventions" description="Only applies to repositories with name ending in -server or containing pm2.json at root.">
+
+<rule id="server-devdependencies">Place all dependencies in `devDependencies` except cleaner packages (which may be exported as types to NPM consumers).</rule>
+
+<rule id="separate-configs">Server and client configuration in separate files (`serverConfig.json`, `clientConfig.json`), both validated with cleaners via `cleaner-config`. Prevents accidentally exposing server secrets to clients.</rule>
+
+<rule id="pm2-process-management">Server processes use PM2 with `pm2.json` at repo root. API processes in cluster mode (`"instances": "max"`); engine processes as single instances to avoid duplicate background work.</rule>
+
+<rule id="build-both">When a server repo has both backend and frontend, the `build` script must build both. Use `npm-run-all -p build.*` to run in parallel.</rule>
+
+</section>

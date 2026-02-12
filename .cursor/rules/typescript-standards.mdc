@@ -1,0 +1,132 @@
+---
+description: TypeScript/React coding standards for error handling, types, and patterns
+globs: ["**/*.ts","**/*.tsx"]
+alwaysApply: false
+---
+
+<goal>Enforce TypeScript and React coding standards in all `.ts`/`.tsx` file edits.</goal>
+
+<rules description="Non-negotiable constraints. Apply to every edit.">
+
+<rule id="no-hardcoded-strings">NEVER use hard-coded user-facing strings. All display text MUST come from localized string resources (`lstrings.*`). This includes error messages, labels, placeholders, and any text visible to users.
+❌ `setError('Something went wrong')`
+❌ `<Text>Loading...</Text>`
+✅ `setError(lstrings.generic_error)`
+✅ `<Text>{lstrings.loading}</Text>`
+</rule>
+
+<rule id="localized-string-placeholders">Localized strings with placeholders MUST use numbered suffixes (`_1s`, `_2s`, etc.) and positional `sprintf` args (`%1$s`, `%2$s`).
+❌ `warning_message: 'Amount %s exceeds limit of %s'`
+✅ `warning_message_2s: 'Amount %1$s exceeds limit of %2$s'`
+❌ `sprintf(lstrings.warning_header, 'this item')`
+✅ `sprintf(lstrings.warning_header_1s, itemName)`
+</rule>
+
+<rule id="no-any">NEVER use `any` types. Define an interface, type, or cleaner. If truly unavoidable, add a comment explaining why.</rule>
+
+<rule id="no-optional-chaining-in-conditions">NEVER use optional chaining results directly in conditions.
+❌ `if (obj?.prop)` → ✅ `if (obj?.prop != null)`
+❌ `if (obj?.arr?.length > 0)` → ✅ `if (obj?.arr != null && obj.arr.length > 0)`
+</rule>
+
+<rule id="no-empty-catch">NEVER use empty rejection handlers that silently swallow errors.
+❌ `.catch(() => {})`
+✅ `.catch((err: unknown) => { showError(err) })`
+Exception: Empty handlers are acceptable ONLY when the rejection is an expected user action (e.g., user cancelled a modal) AND there's nothing to clean up.
+</rule>
+
+<rule id="catch-typing">Catch blocks MUST use `(err: unknown) => {...}` format.</rule>
+
+<rule id="no-void-operator">Do not use the `void` operator to silence Promise returns. Create a non-async handler wrapping the async call with explicit error handling.
+❌ `onSwipe={() => { void doAsync() }}`
+✅ `const onSwipe = useHandler(() => { doAsync().catch((err: unknown) => { showError(err) }) })`
+</rule>
+
+<rule id="no-inline-styles">Do not use inline styles in JSX. Use `getStyles`/`cacheStyles` (static) and memoized (derived) for style definitions.</rule>
+
+<rule id="no-inline-arrow-jsx">JSX event handler props MUST NOT use inline arrow functions. Create named handlers.</rule>
+
+</rules>
+
+<standards description="Coding patterns and conventions.">
+
+<standard id="nullish-coalescing">Use `??` instead of `||` for default values. `??` only treats `null`/`undefined` as missing; `||` treats all falsy values as missing.
+❌ `config.timeout || 5000` → ✅ `config.timeout ?? 5000` (preserves `0`)
+❌ `user.name || 'Anonymous'` → ✅ `user.name ?? 'Anonymous'` (preserves `''`)
+</standard>
+
+<standard id="flat-boolean-expressions">Prefer flat boolean expressions over nested if/return in filter/predicate functions.
+❌ `if (x != null) { if (f(x).match(y)) { return true } }; return otherResult`
+✅ `return (x != null && f(x).match(y)) || otherResult`
+</standard>
+
+<standard id="no-redundant-fallthrough">Do not add branches that return the same value as the final return.
+❌ `if (node.type === 'TSNullKeyword') { return false }; return false`
+✅ `return false`
+</standard>
+
+<standard id="no-unnecessary-wrappers">When a handler only forwards to another function with no additional logic, pass the function directly.
+❌ `const handleComplete = useHandler(() => { onComplete?.() })`
+✅ `onPress: onComplete`
+</standard>
+
+<standard id="extract-helpers">Extract reusable helpers for common boilerplate patterns (e.g., "run at most once in parallel").</standard>
+
+<standard id="precompute-outside-loops">Avoid calling expensive transformation functions (like `normalizeForSearch`, `toLowerCase`) inside loops when the input doesn't change per iteration. Pre-compute outside the loop.
+❌ `items.filter(item => searchTerms.every(term => normalize(item![1770928879881](image/typescript-standards/1770928879881.png)![1770928886532](image/typescript-standards/1770928886532.png).name).includes(term)))`
+✅ `items.filter(item => { const n = normalize(item.name); return searchTerms.every(term => n.includes(term)) })`
+</standard>
+
+<standard id="asjson-cleaner">Use `asJSON` cleaner instead of manual `JSON.parse`.
+❌ `const data = asMyCleaner(JSON.parse(text))`
+✅ `const data = asJSON(asMyCleaner)(text)`
+</standard>
+
+<standard id="usequery-over-useeffect">Use TanStack Query (`useQuery`) for async data fetching instead of `useEffect`/`useState` patterns.
+❌ `const [data, setData] = useState(null); useEffect(() => { fetchData().then(setData) }, [])`
+✅ `const { data } = useQuery({ queryKey: ['myData', deps], queryFn: fetchData, enabled: deps != null })`
+</standard>
+
+<standard id="specific-selectors">Use specific Redux selectors to avoid unnecessary re-renders.
+❌ `const { countryCode } = useSelector(state => state.ui.settings)`
+✅ `const countryCode = useSelector(state => state.ui.settings.countryCode)`
+</standard>
+
+<standard id="component-typing">Use `React.FC<Props>` for component exports. Use `React.ReactElement` for non-component render functions.
+❌ `const Component = (props: Props): React.JSX.Element => {`
+✅ `const Component: React.FC<Props> = props => {`
+</standard>
+
+<standard id="useeffect-cleanup">Always include cleanup functions in `useEffect` hooks that create timers, intervals, subscriptions, or other side effects.</standard>
+
+<standard id="comments-current-state">Code comments and READMEs document the current state of the code, not the history of changes.</standard>
+
+</standards>
+
+<lint-fix-patterns description="Common ESLint fix recipes for this project's config. Apply directly — do not search node_modules for types.">
+
+<pattern id="strict-boolean-any">`@typescript-eslint/strict-boolean-expressions` on `any`-typed value.
+Cause: Variable is `any` because it comes from an untyped method or third-party code.
+Fix: Type-annotate the variable to remove `any`. Do NOT use explicit comparisons — they don't help when the value itself is `any`.
+❌ `if (!result.ok)` where `result` is `any`
+✅ `const results: Array<EdgeResult<EdgeCurrencyWallet>> = await wallet.split(items)`
+Known untyped methods: `EdgeCurrencyWallet.split()` returns `Array<EdgeResult<EdgeCurrencyWallet>>`.
+</pattern>
+
+<pattern id="type-only-imports">Type-only imports MUST use `import type` at the top level, not inline `type` keyword within a value import.
+Rule: `@typescript-eslint/no-import-type-side-effects`
+❌ `import { type Foo, type Bar } from 'module'` (when importing ONLY types)
+✅ `import type { Foo, Bar } from 'module'`
+OK: `import { someValue, type Foo } from 'module'` (mixed value + type import)
+</pattern>
+
+<pattern id="import-sorting">Imports are auto-sorted by `simple-import-sort/imports`. When adding new imports, place them roughly in alphabetical order — the formatter will fix the exact order. If the pre-commit hook fails with "Run autofix to sort these imports!", the imports just need reordering.
+</pattern>
+
+<pattern id="promise-catch-handling">Floating promises must have `.catch()` handlers (`@typescript-eslint/no-misused-promises`).
+✅ `.catch((err: unknown) => { showError(err) })` — standard for unexpected errors
+✅ `.catch(() => {})` — ONLY for expected rejections (user cancelled modal, expected race condition)
+The `(err: unknown)` typing is required by `@typescript-eslint/no-unsafe-argument`.
+</pattern>
+
+</lint-fix-patterns>

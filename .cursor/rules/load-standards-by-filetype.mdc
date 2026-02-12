@@ -1,0 +1,19 @@
+---
+description: 
+alwaysApply: true
+---
+
+<goal>Load language-specific coding standards before editing or investigating lint/type errors in files, without redundant reads.</goal>
+
+<rules>
+<rule id="check-before-read">Before using any code editing tool on a file OR investigating lint/type errors in that file type, check if the matching standards rule is already present in `cursor_rules_context`. Only read the rule file if it is NOT already in context.</rule>
+<rule id="read-before-edit">If the rule is not in context, read it using the Read tool and follow its contents BEFORE making the edit or investigating the error.</rule>
+</rules>
+
+<standards-map>
+
+| File glob           | Standards file                               |
+|---|----|
+| `**/*.ts`,`**/*.tsx` | `~/.cursor/rules/typescript-standards.mdc` |
+
+</standards-map>

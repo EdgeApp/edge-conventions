@@ -1,0 +1,17 @@
+---
+description: Detect questions in prompts and answer them before making changes
+alwaysApply: true
+---
+
+# Answer Questions Before Acting
+
+Before using any code editing tools, scan the user's message for `?` characters.
+
+- **Ignore** `?` inside URLs or query parameters (e.g. `?param=x`, `?key=value`)
+- **Treat all other `?`** as question statements
+
+If questions are detected:
+
+1. Read `~/.cursor/commands/q.md` and follow its workflow to answer every question.
+2. Do **not** edit files, create files, or run mutating commands until the user responds.
+3. Only proceed with implementation after the user permits it in a follow-up message.

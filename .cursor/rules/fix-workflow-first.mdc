@@ -1,0 +1,15 @@
+---
+description: When a workflow issue is identified in a command or skill, fix the command/skill definition first before fixing the downstream misbehavior.
+alwaysApply: true
+---
+
+# Fix Workflow Definitions First
+
+When a misbehavior is traced to a command (`.cursor/commands/*.md`) or skill (`.cursor/skills/*/SKILL.md`):
+
+1. **Stop** fixing the downstream symptom.
+2. **Identify the root cause** in the command/skill definition.
+3. **Fix the command/skill first** using `/author` (`~/.cursor/skills/author/SKILL.md`), which contains the current best practices and mandatory revision checklist for command/skill authoring.
+4. **Then** fix the immediate misbehavior if still needed.
+
+This applies to all workflow issues — missed steps, incorrect output, wrong tool usage, formatting problems, etc. The command/skill is the source of truth; patching around it creates drift.
