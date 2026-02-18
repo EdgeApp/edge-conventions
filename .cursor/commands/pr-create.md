@@ -5,7 +5,7 @@
 <rule id="no-script-bypass">If a companion script fails, report the error and STOP. Do NOT fall back to raw `gh`, `curl`, or other workarounds.</rule>
 <rule id="gh-auth-required">If any script exits code 2 with `PROMPT_GH_AUTH`, prompt the user to run `gh auth login` and STOP.</rule>
 <rule id="commit-script">Always commit using `~/.cursor/commands/lint-commit.sh -m "message" [files...]`. Never use raw `git add` + `git commit`.</rule>
-<rule id="changelog-required">Every PR needs a CHANGELOG entry in a dedicated final commit. See `im.md` for placement rules.</rule>
+<rule id="changelog-required">Every PR needs a CHANGELOG entry in the last feature commit. See `im.md` for placement rules.</rule>
 <rule id="no-force-push">Do NOT force-push without explicit user confirmation.</rule>
 <rule id="no-dirty-pr">Do NOT create a PR if there are uncommitted changes — commit first.</rule>
 <rule id="no-base-push">Do NOT push to master/develop directly.</rule>
@@ -167,9 +167,15 @@ caches stale data because `useSyncEffect` doesn't re-trigger on `currencyConfig`
 <step id="7" name="Create PR">
 Create the PR immediately — do not ask for confirmation.
 
-```bash
-~/.cursor/commands/pr-create.sh --title "<title>" --body "<body>"
-```
+1. **Write the body to a temp file** using the Write tool (NOT a shell command):
+   - Path: `/tmp/pr-body.md`
+   - Content: the full PR body built in step 6
+2. **Run the script**:
+   ```bash
+   ~/.cursor/commands/pr-create.sh --title "<title>" --body-file /tmp/pr-body.md
+   ```
+
+Using `--body-file` avoids shell escaping issues with multi-line content. Do NOT use `--body` with inline content.
 
 If the script exits code 2 with `PROMPT_GH_AUTH`, prompt the user to run `gh auth login` and STOP.
 </step>

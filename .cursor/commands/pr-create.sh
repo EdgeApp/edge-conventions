@@ -1,20 +1,23 @@
 #!/usr/bin/env node
 // pr-create.sh — Creates a PR for the current branch using gh CLI.
-// Usage: ./pr-create.sh [--title "PR title"] [--body "PR body"] [--draft]
+// Usage: ./pr-create.sh [--title "PR title"] [--body-file <path>] [--draft]
 // Reads from git context: repo owner/name, current branch, default branch.
 // Outputs JSON with PR URL and number on success.
 
 const { execSync, spawnSync } = require("child_process");
+const fs = require("fs");
+const os = require("os");
+const path = require("path");
 
 // Parse args
 const args = process.argv.slice(2);
 let title = null;
-let body = null;
+let bodyFile = null;
 let draft = false;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--title" && args[i + 1]) title = args[++i];
-  else if (args[i] === "--body" && args[i + 1]) body = args[++i];
+  else if (args[i] === "--body-file" && args[i + 1]) bodyFile = args[++i];
   else if (args[i] === "--draft") draft = true;
 }
 
@@ -133,17 +136,8 @@ if (!body) {
   }
 }
 
-// Create PR via gh CLI — handles push check, existing-PR check, etc.
-const ghArgs = [
-  "pr",
-  "create",
-  "--title",
-  title,
-  "--body",
-  body,
-  "--json",
-  "number,title,url,headRefName,baseRefName,isDraft",
-];
+// Create PR via gh CLI
+const ghArgs = ["pr", "create", "--title", title, "--body", body];
 if (draft) ghArgs.push("--draft");
 
 const result = spawnSync("gh", ghArgs, { encoding: "utf8" });
@@ -152,16 +146,23 @@ if (result.status !== 0) {
   process.exit(1);
 }
 
-const pr = JSON.parse(result.stdout);
+// gh pr create outputs the PR URL on stdout (--json not supported in older gh)
+const prUrl = (result.stdout || "").trim();
+const prMatch = prUrl.match(/\/pull\/(\d+)$/);
+if (!prMatch) {
+  console.error("ERROR: Could not parse PR URL from output:", prUrl);
+  process.exit(1);
+}
+
 console.log(
   JSON.stringify(
     {
-      url: pr.url,
-      number: pr.number,
-      title: pr.title,
-      base: pr.baseRefName,
-      head: pr.headRefName,
-      draft: pr.isDraft,
+      url: prUrl,
+      number: parseInt(prMatch[1], 10),
+      title,
+      base: defaultBranch,
+      head: branch,
+      draft,
       owner,
       repo,
     },
