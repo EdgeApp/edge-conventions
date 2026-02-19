@@ -216,9 +216,9 @@ mkdir -p .cursor/tmp
 ```
 
 Then write the report to:
-`.cursor/tmp/MMDDhhmm_bug-analysis-<repo>.md`
+`.cursor/tmp/YYYYMMDDTHHMM_bug-analysis-<repo>.md`
 
-Example: `.cursor/tmp/01280406_bug-analysis-edge-react-gui.md`
+Example: `.cursor/tmp/20260128T0406_bug-analysis-edge-react-gui.md`
 
 ---
 

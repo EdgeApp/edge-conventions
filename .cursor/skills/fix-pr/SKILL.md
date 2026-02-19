@@ -41,7 +41,7 @@ Skip comments where:
 
 ### Plan Document Format
 
-Name the document: `MMDDhhmm_[repository-name]_[branch-name]_pr-[pr-number]_fixplan.md`
+Name the document: `YYYYMMDDTHHMM_[repository-name]_[branch-name]_pr-[pr-number]_fixplan.md`
 
 Structure the plan as:
 
@@ -87,7 +87,14 @@ Do not proceed until the user explicitly confirms the plan.
 
 ## Implementing Fixes
 
-Once the user approves the plan, process each fix item:
+Once the user approves the plan:
+
+1. **Stash uncommitted changes** to preserve the working directory:
+   - Check if there are uncommitted changes: `git diff --quiet && git diff --cached --quiet`
+   - If there are changes (command returns non-zero), run `git stash push -m "fixpr: preserving work"` and note that a stash was created
+   - If working directory is clean, skip stashing
+
+2. Process each fix item:
 
 For each fix in the plan:
 
@@ -113,7 +120,8 @@ After all fixes are implemented:
    ```bash
    git push --force-with-lease origin <branch-name>
    ```
-3. Optionally, reply to resolved review comments on GitHub using the MCP server
+3. **Restore stashed changes** if a stash was created earlier: `git stash pop`
+4. Optionally, reply to resolved review comments on GitHub using the MCP server
 
 ## Important Warnings
 

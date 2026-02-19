@@ -12,7 +12,10 @@ Execute a planning document and iteratively refine the implementation until it p
 
 ### Phase 1: Preparation
 
-1. Stash any uncommitted changes (preserve the working directory)
+1. Check for uncommitted changes and stash if present:
+   - Run `git diff --quiet && git diff --cached --quiet` to check for changes
+   - If there are changes (command returns non-zero), run `git stash push -m "codeit: preserving work"` and track that a stash was created
+   - If working directory is clean, skip stashing and note that no restore is needed
 2. Identify the target repository from the planning document
 3. Change to the repository directory
 
@@ -69,7 +72,7 @@ Iterate until the code passes review (maximum 5 iterations):
 
 1. Report success to the user
 2. Summarize the implementation and any fixes made
-3. Restore any stashed changes
+3. Restore stashed changes only if a stash was created in Phase 1 (run `git stash pop`)
 
 ## Constraints
 
