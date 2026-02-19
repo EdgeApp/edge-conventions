@@ -76,17 +76,18 @@ Use `?? []`, `?? {}`, or explicit type annotations instead of suppressing errors
 
 ## Understand undefined vs null Semantics
 
-When checking for changes, understand that `undefined` and `null` have different meanings:
+When checking for changes, understand that `undefined` and `null` have different meanings. Prefer `== null` to include both, unless we need to differentiate them:
 
 ```typescript
-// Incorrect - treats null and undefined the same
-const anyChanged = nameChange != null || categoryChange != null
+// Correct: Testing if the thing exists
+if (thing != null) {}
 
-// Correct - null means "delete the field", which IS a change
-const anyChanged = nameChange !== undefined || categoryChange !== undefined
+// Incorrect: Being too specific in checking for existence
+if (thing !== undefined) {}
+
+// Correct: We are using `null` to represent deleted items
+if (changes[row] !== undefined) {}
 ```
-
-Use `!== undefined` when `null` has semantic meaning (like "delete this field").
 
 ---
 
@@ -236,57 +237,18 @@ function formatCurrency(
 
 ---
 
-## Don't Add Redundant Error Handling
-
-When a global error handler already catches and displays errors, don't add local `.catch(showError)` calls:
-
-```typescript
-// Incorrect - redundant when global handler exists
-const handlePress = async () => {
-  try {
-    await doSomething()
-  } catch (error) {
-    showError(error)  // Global handler already does this
-  }
-}
-
-// Correct - let global handler catch it
-const handlePress = async () => {
-  await doSomething()
-}
-```
-
-The codebase uses `withExtendedTouchable` and similar HOCs that catch promise rejections and call `showError`. Adding local error handling duplicates this work and can cause errors to be shown twice.
-
-Only add explicit error handling when:
-- You need to handle specific error types differently
-- You need to perform cleanup before re-throwing
-- There's no global handler in the call chain
-
----
-
 ## Handle User Cancellation Gracefully
 
-When a user cancels an operation, don't show a generic error message:
+Modal cancellation should use `return undefined` rather than throwing errors. Most of the codebase follows this pattern, and the type system enforces handling the `undefined` case:
 
 ```typescript
-// Incorrect - shows error for intentional cancellation
-try {
-  await userInputModal()
-} catch (error) {
-  showError(error)  // Shows "User cancelled" as an error
-}
+// Correct - modal returns undefined on cancel
+const result = await userInputModal()
+if (result == null) return
 
-// Correct - check if it's a cancellation
-try {
-  await userInputModal()
-} catch (error) {
-  if (error instanceof UserCancelledError) return
-  showError(error)
-}
+// Incorrect - throwing on cancel forces callers to catch
+throw new UserCancelledError()
 ```
-
-User-initiated cancellations (closing modals, pressing back) should exit silently.
 
 ---
 

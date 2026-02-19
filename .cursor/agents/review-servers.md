@@ -154,9 +154,7 @@ pm2 start pm2.json
 
 **Why:** PM2 provides process monitoring, automatic restarts on crash, log management, and cluster mode support. The `pm2.json` file ensures consistent deployment configuration across environments. Separating API and engine processes allows the API to scale horizontally in cluster mode while engines run as a single instance to avoid duplicate background work.
 
----
-
-## Build Scripts for Server and Client
+### Build Scripts for Server and Client
 
 When a server repository includes both a backend server and a frontend client (web UI), the `build` script must build both. Use `npm-run-all` to run build scripts in parallel:
 

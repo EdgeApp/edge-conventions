@@ -68,7 +68,7 @@ Arguments: { "platform": "iOS Simulator" }
 In a **separate terminal**, start the React Native Metro bundler:
 
 ```bash
-yarn start
+yarn start --client-logs
 ```
 
 **Important**: Keep this terminal visible. React Native JavaScript logs appear here, making it essential for debugging JS-side issues.
@@ -88,7 +88,7 @@ This will:
 2. Boot an iOS simulator
 3. Install and launch the Edge app
 
-The build can take 10-15 minutes on first run.
+The build can take 10-15 minutes on first run. Run with `block_until_ms: 900000` (15 min) to avoid premature backgrounding.
 
 ## Step 7: Log Into Test Account (If Needed)
 
@@ -212,7 +212,7 @@ yarn
 yarn start
 ```
 
-The debug server watches for changes and rebuilds automatically. Each repo needs its own terminal running `yarn start`.
+The debug server watches for changes and rebuilds automatically. Each repo needs its own terminal running `yarn start`. Rebuilds usually take less than 1 second, but can occasionally take over 10 seconds. Always wait for the rebuild to finish before starting another testing loop.
 
 **Step 3: Rebuild the app**
 

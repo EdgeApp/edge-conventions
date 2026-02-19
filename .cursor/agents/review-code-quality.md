@@ -90,11 +90,11 @@ const body: CreateUserBody = {
 }
 await fetch('/api/users', {
   method: 'POST',
-  body: JSON.stringify(body)
+  body: wasCreateUserBody(body)
 })
 ```
 
-This pattern catches type errors at compile time when the API contract changes.
+When using the cleaners library, prefer uncleaners (`wasX`) over `JSON.stringify` for serialization. This catches type errors at compile time when the API contract changes.
 
 ---
 
@@ -191,27 +191,14 @@ Debug configurations should come from environment variables or build-time consta
 
 ---
 
-## No Local Path Dependencies
+## Local Path Dependencies Require Linked PRs
 
-Don't use local file paths in package.json dependencies:
+Local file path dependencies in `package.json` (e.g., `"edge-core-js": "../edge-core-js"`) are acceptable when the PR has a linked dependency PR that must be published first. This is the standard workflow for cross-repo changes.
 
-```json
-// Incorrect - local path dependency
-{
-  "dependencies": {
-    "my-package": "file:../my-package"
-  }
-}
-
-// Correct - use published version or git URL
-{
-  "dependencies": {
-    "my-package": "^1.0.0"
-  }
-}
-```
-
-Local paths break builds for other developers and CI systems.
+When reviewing, if you see a local path dependency:
+- Verify the PR description references a dependent PR from the dependency library
+- That dependency PR must be published before this PR can be merged
+- The local path should be replaced with the published version at merge time
 
 ---
 
@@ -258,62 +245,33 @@ Duplicated validation logic leads to inconsistent UX where users can submit inva
 
 ---
 
-## Use Local Helpers for Amount Conversions
+## Avoid Deprecated Methods
 
-Avoid async wallet API calls for conversions since they cross an expensive bridge. Use local synchronous helpers instead:
-
-```typescript
-// Incorrect - async bridge call for simple conversion
-const amount = await wallet.nativeToDenomination(nativeAmount, currencyCode)
-
-// Correct - use local helper with biggystring
-import { div } from 'biggystring'
-import { getExchangeDenom } from '../selectors/DenominationSelectors'
-
-const { multiplier } = getExchangeDenom(wallet.currencyConfig, tokenId)
-const exchangeAmount = div(nativeAmount, multiplier, DECIMAL_PRECISION)
-```
-
-For native-to-exchange conversion, always specify precision to avoid integer truncation:
-
-```typescript
-// Incorrect - integer division truncates decimals
-const amount = div(nativeAmount, multiplier)  // 50000000 / 100000000 = 0
-
-// Correct - specify decimal precision
-const DECIMAL_PRECISION = 18
-const amount = div(nativeAmount, multiplier, DECIMAL_PRECISION)  // "0.5"
-```
-
-The `getExchangeDenom` helper synchronously reads from `currencyConfig` which is already available locally.
+Don't use deprecated API methods when local alternatives exist. Check for deprecation markers (`@deprecated` in JSDoc or type definitions) and use the recommended replacement.
 
 ---
 
-## Don't Hand-Roll Standard Operations
+## Use rfc4648 for All Base64 and Hex Conversions
 
-Use established libraries instead of implementing standard algorithms:
+Use the `rfc4648` library for all base64 and hex encoding/decoding. Do not use hand-rolled implementations or `Buffer.toString('hex')`:
 
 ```typescript
 // Incorrect - hand-rolled base64 encoding
 const toBase64 = (data: Uint8Array): string => {
-  let result = ''
-  for (let i = 0; i < data.length; i += 3) {
-    // ... manual base64 implementation
-  }
-  return result
+  // ... manual implementation
 }
 
+// Incorrect - using Buffer for hex
+const hex = Buffer.from(data).toString('hex')
+
 // Correct - use rfc4648 library
-import { base64 } from 'rfc4648'
+import { base16, base64 } from 'rfc4648'
 const encoded = base64.stringify(data)
 const decoded = base64.parse(encodedString)
+const hex = base16.stringify(data).toLowerCase()
 ```
 
-Hand-rolled implementations:
-- May have subtle bugs
-- Lack test coverage
-- Add maintenance burden
-- Often miss edge cases the library handles
+`Buffer` is not available in all environments (React Native WebView), and hand-rolled implementations risk subtle bugs.
 
 ---
 

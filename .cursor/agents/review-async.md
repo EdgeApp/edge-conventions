@@ -59,42 +59,11 @@ Or use existing `useAsyncValue` hook. Don't re-implement async loading patterns.
 
 ## Background Services
 
-Background services go in `components/services/` directory:
-
-> "If we did want a persistent background service, it would go in components/services. Making it a component means it gets mounted/unmounted cleanly when we log in/out, and we can also see all the background stuff in one place."
+Do not spawn long-running `async` work in the background. Instead, create a component in the `components/services/` directory to manage the work's lifetime. Making it a component means it gets mounted/unmounted cleanly when we log in/out, and we can see all the background services in one place.
 
 Avoid too much background work. Consider:
 - Triggering only when the user has pending items
 - Running only when on the relevant scene
-
----
-
-## Prevent Concurrent Execution
-
-Use a helper to prevent duplicate parallel calls when a function can be triggered multiple times (e.g., button presses, retries):
-
-```typescript
-// Helper to ensure only one execution at a time
-function runOnce<T>(fn: () => Promise<T>): () => Promise<T | undefined> {
-  let running = false
-  return async () => {
-    if (running) return
-    running = true
-    try {
-      return await fn()
-    } finally {
-      running = false
-    }
-  }
-}
-
-// Usage
-const handleSubmit = runOnce(async () => {
-  await submitForm()
-})
-```
-
-This prevents race conditions from multiple simultaneous calls to the same async function.
 
 ---
 
@@ -157,22 +126,21 @@ State captured in closures doesn't update when the source changes. This is espec
 
 ## Clean Up Timeouts on Shutdown
 
-When using `setTimeout` in services or engines that can be stopped, track pending timeouts and clear them on shutdown:
+For periodic work, use `makePeriodicTask` which handles cleanup automatically. For one-shot timeouts in services or engines that can be stopped, track pending timeouts and clear them on shutdown:
 
 ```typescript
-// Incorrect - timeouts persist after engine stops
+// Incorrect - timeout persists after engine stops
 class MyEngine {
-  async processItem(id: string) {
+  async retryItem(id: string) {
     try {
       await this.fetch(id)
     } catch (error) {
-      // BUG: This timeout runs even after killEngine() is called
-      setTimeout(() => this.processItem(id), 5000)
+      setTimeout(() => this.retryItem(id), 5000)
     }
   }
 
   async killEngine() {
-    this.cache.clear()  // Timeouts still fire after this!
+    this.cache.clear()  // Timeout still fires after this!
   }
 }
 
@@ -180,20 +148,19 @@ class MyEngine {
 class MyEngine {
   private pendingTimeouts: Set<ReturnType<typeof setTimeout>> = new Set()
 
-  async processItem(id: string) {
+  async retryItem(id: string) {
     try {
       await this.fetch(id)
     } catch (error) {
       const timeoutId = setTimeout(() => {
         this.pendingTimeouts.delete(timeoutId)
-        this.processItem(id)
+        this.retryItem(id)
       }, 5000)
       this.pendingTimeouts.add(timeoutId)
     }
   }
 
   async killEngine() {
-    // Clear all pending timeouts before cleanup
     for (const timeoutId of this.pendingTimeouts) {
       clearTimeout(timeoutId)
     }

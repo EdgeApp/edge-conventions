@@ -201,6 +201,7 @@ Route each accepted comment to the appropriate review subagent:
 | commit message, git, rebase, PR structure | review-pr.md |
 | lstrings, en_US.json, localization, hardcoded string | review-strings.md |
 | naming, dead code, unused, organization | review-code-quality.md |
+| test, tests, unit test, mock, coverage, testability, jest, spec | review-tests.md |
 
 ### Step 6: Check for Duplicates
 
@@ -362,3 +363,10 @@ Track and report:
 - Delete unused code
 - Inline parameters
 - Use existing helpers
+
+### review-tests.md
+- Unit test coverage
+- Testability patterns
+- Dependency injection for testing
+- Mock and stub usage
+- Test organization

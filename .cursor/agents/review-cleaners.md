@@ -67,6 +67,10 @@ const asMyData = asObject({
   value: asNumber
 })
 type MyData = ReturnType<typeof asMyData>
+
+// Correct - external types
+import type { Foo } from 'some-library'
+const asFoo = asObject(...)
 ```
 
 ---
@@ -94,15 +98,22 @@ asResponse({ data: null })        // data is null (converted to undefined by def
 asResponse({ data: 'hello' })     // data is 'hello'
 ```
 
-When you need to preserve the distinction between `null` and `undefined`:
+If you need special handling for `null`, you can create a custom cleaner function. For instance:
 
 ```typescript
-// To preserve explicit null values from API
-const asResponse = asObject({
-  data: asOptional(asEither(asNull, asString), null)
-  // Second arg is default: null if missing/undefined, otherwise the actual value
-})
+/**
+ * Like `asOptional`, but explicitly preserves `null`.
+ */
+function asNullable<T>(cleaner: Cleaner<T>): Cleaner<T | null | undefined> {
+  return raw => {
+    if (raw === undefined) return undefined
+    if (raw === null) return null
+    return cleaner(raw)
+  }
+}
 ```
+
+Alternatively, `asEither(asValue(null, undefined), asString)` also preserves the `null` vs `undefined` distinction.
 
 ---
 

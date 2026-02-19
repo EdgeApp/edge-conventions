@@ -37,7 +37,7 @@ Do not hardcode any user-facing strings in UI components. Instead, add them to t
 
 ## Reuse Existing Strings
 
-Do not create new strings if an existing one can be used. Search the localization file before adding new keys.
+Do not create new strings if an existing one can be used. Search the localization file before adding new keys. However, only reuse a string when the text AND the semantic context are the same. If a string serves a different purpose (e.g., a button label vs a scene title), create a context-specific key even if the display text happens to be identical.
 
 ---
 
@@ -57,7 +57,7 @@ String key names should describe their semantic meaning, not their location in t
 }
 ```
 
-This allows the same string to be reused across different screens without confusion.
+This allows the same string to be reused across different screens when the context matches.
 
 ---
 

@@ -288,30 +288,6 @@ Icon components from different libraries may not support the same style props.
 
 ---
 
-## Wrap Navigation After Gestures
-
-When triggering navigation (push, pop, replace) immediately following a complex gesture (like a slider completion or swipe), wrap the navigation call in `InteractionManager.runAfterInteractions` to avoid crashes caused by unmounting components while the gesture system is active:
-
-```typescript
-import { InteractionManager } from 'react-native'
-
-// Incorrect - can crash on physical devices
-const handleSliderComplete = () => {
-  navigation.pop()
-}
-
-// Correct - waits for gesture to finish
-const handleSliderComplete = () => {
-  InteractionManager.runAfterInteractions(() => {
-    navigation.pop()
-  })
-}
-```
-
-This is especially important for slider-based confirmations (like send flows) where the navigation happens at the exact moment the gesture completes.
-
----
-
 ## Disable UI During Async Actions
 
 When a user action triggers an asynchronous operation (like a network request or navigation), disable the interactive element to prevent double-taps or race conditions:
@@ -337,3 +313,5 @@ const handlePress = useHandler(async () => {
 ```
 
 Pass the `pending` state to the component to visually indicate the loading state and/or disable the button.
+
+Components that accept async callbacks like `onPress` should handle this internally. When passing an `onPress` prop to `EdgeButton`, for instance, the button itself handles this concern.
