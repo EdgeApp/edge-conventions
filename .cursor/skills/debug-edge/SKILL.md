@@ -37,9 +37,14 @@ yarn prepare
 
 ## Step 2: Clean iOS Build Artifacts
 
-Remove cached iOS build files:
+First verify you are in the correct directory, then remove cached iOS build files:
 
 ```bash
+# Verify working directory before destructive operations
+if [[ "$(basename "$(pwd)")" != "edge-react-gui" ]]; then
+  echo "Error: Must be in edge-react-gui directory, currently in $(pwd)"
+  exit 1
+fi
 rm -rf ios/Pods && rm -rf ios/build
 ```
 

@@ -89,6 +89,7 @@ const pollForStatus = async (cancel: { cancelled: boolean }) => {
     if (cancel.cancelled) return
     if (status === 'complete') return status
     await sleep(2000)
+    if (cancel.cancelled) return
   }
 }
 ```

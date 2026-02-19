@@ -44,6 +44,11 @@ If a branch name is provided (not a PR):
    ```bash
    git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'
    ```
+   If this command fails (common in forked repos or non-standard configs), use fallback detection:
+   - Try `git remote show origin | grep 'HEAD branch' | sed 's/.*: //'`
+   - If that fails, check if `origin/master` exists: `git rev-parse --verify origin/master`
+   - If not, check if `origin/main` exists: `git rev-parse --verify origin/main`
+   - Use whichever branch exists, defaulting to `master` if neither can be verified
 5. If the branch has uncommitted or unstaged changes (no commits beyond the base), use `git diff` for unstaged changes and `git diff --cached` for staged changes instead of `git diff <base>...HEAD`. No git checkout operations are needed in this case.
 6. Skip the GitHub MCP sections and proceed directly to **Review Process**
 
@@ -133,7 +138,7 @@ If branch checkout fails (e.g., fork was deleted, network issues), use the attac
 ## Review Process
 
 1. Get the complete diff:
-   - **For local branches**: `git diff <base-branch>...HEAD` (e.g., `git diff master...HEAD`)
+   - **For local branches**: First check for uncommitted changes with `git diff` (unstaged) and `git diff --cached` (staged). If uncommitted changes exist, include them alongside `git diff <base-branch>...HEAD` so the review covers both committed and uncommitted work. If the branch has no commits beyond the base (HEAD equals base), use only `git diff` and `git diff --cached`.
    - **For PRs with local checkout**: `git diff <base>...HEAD`
    - **For PRs without checkout**: Read the attached diff from `/pull-requests/pr-<number>/all.diff`
 
@@ -176,8 +181,8 @@ cursor --reuse-window <review-document-path>
 ```
 
 Name the document:
-- **For PRs**: `MMDDhhmm_[repository-name]_[branch-name]_pr-[pr-number].md`
-- **For local branches**: `MMDDhhmm_[repository-name]_[branch-name]_review.md`
+- **For PRs**: `YYYYMMDDTHHMM_[repository-name]_[branch-name]_pr-[pr-number].md`
+- **For local branches**: `YYYYMMDDTHHMM_[repository-name]_[branch-name]_review.md`
 
 Pause for the user to review.
 
