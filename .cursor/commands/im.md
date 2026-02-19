@@ -3,7 +3,7 @@
 <rules description="Non-negotiable constraints.">
 <rule id="read-coding-standards">Before writing ANY code, read `.cursor/rules/typescript-standards.mdc` and follow all rules and standards in it throughout the implementation.</rule>
 <rule id="no-impl-before-confirm">When an Asana task is provided, do NOT begin implementation until the user confirms the task summary (Step 0).</rule>
-<rule id="lint-before-change">Before writing ANY code changes to a file, run `eslint --quiet` on it. If warnings or errors exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This is the most critical workflow rule — every feature commit must start with a lint-clean file.</rule>
+<rule id="lint-before-change">Before the first edit to ANY file, run `npx eslint <file>` (without `--quiet` — warnings must be visible). If warnings or errors exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This applies to every file you touch, including ones discovered mid-implementation — not just the files you planned upfront.</rule>
 <rule id="no-manual-formatting">Do not manually fix formatting. `lint-commit.sh` runs `eslint --fix` (which includes Prettier) before committing. If you see a formatting lint after editing, do NOT make another edit to fix it.</rule>
 <rule id="commit-script">Always commit using `~/.cursor/commands/lint-commit.sh -m "message" [files...]` or `--fixup <hash>` for fixup commits.</rule>
 <rule id="clean-history">The final commit history must read as a clean, straight-line progression — as if every decision was made correctly up front. Never preserve the "squiggly path" of development (adding then removing code, temporary scaffolding, exploratory commits). If you introduce something in commit A and remove it in commit B, restructure so the final history never contains it. Plan commits proactively to avoid this; when it happens anyway, restructure the branch before finishing.</rule>
@@ -20,7 +20,7 @@ If no Asana link is provided, skip this step.
 
 If the task describes a regression (e.g. "broke in version X", "stopped working after update"):
 
-1. **Identify the breaking commit** using `git log`, `git bisect`, or version tag comparison. Don't take the reported version at face value — verify by examining the actual commit history.
+1. **Identify the breaking commit** using `git log`, `git bisect`, or version tag comparison. Don't take the reported version from the task at face value — verify by examining the actual commit history.
 2. **Review the original change's full intent.** Find the associated PR and any linked tasks/discussions. The regression-causing commit likely had legitimate goals (performance, refactoring, new features). Understand ALL of its intended effects, not just the one that broke.
 3. **Ensure the fix preserves the original intent.** The fix must not undo the beneficial changes introduced by the regression commit. If the fix conflicts with the original intent, flag this to the user with tradeoffs before proceeding.
 </step>
@@ -41,39 +41,42 @@ If the task spans multiple repos, note the additional repos but implement in the
 </step>
 
 <step id="2" name="Pre-change lint check">
-**Before writing ANY code**, for each file you plan to modify:
+**Before writing ANY code**, lint every file you currently plan to modify:
 
 ```bash
-npx eslint --quiet <file>
+npx eslint <file1> <file2> ...
 ```
 
-If warnings or errors exist, fix ONLY those lint issues and commit them:
+Do NOT use `--quiet` — warnings must be visible. If warnings or errors exist, fix ONLY those lint issues and commit them:
 
 ```bash
-~/.cursor/commands/lint-commit.sh -m "Fix lint warnings in <ComponentName>" <file>
+~/.cursor/commands/lint-commit.sh -m "Fix lint warnings in <ComponentName>" <file1> <file2> ...
 ```
 
-This ensures the subsequent feature commit introduces zero pre-existing warnings. Do this for ALL files you will touch, not just one at a time reactively.
+`lint-commit.sh` automatically removes graduated files from `eslint.config.mjs` warning overrides at commit time.
+
+This ensures the subsequent feature commit introduces zero pre-existing warnings. This is the initial pass — if you discover additional files to modify during Step 3, the same check applies (see Step 3).
 </step>
 
 <step id="3" name="Implementation">
-1. Break up the feature into multiple commits if necessary. Commit messages should be a concise title without tags like "feat" and a short body.
-2. Open relevant ts/tsx files before writing code.
-3. Commit using `lint-commit.sh`:
+1. **Lint-check newly discovered files**: If you need to modify a file not covered in Step 2, run `npx eslint <file>` before editing it. If pre-existing warnings exist, fix them and commit as a `--fixup` to the lint-fix commit from Step 2 (use `git log --oneline` to find the hash). If no lint-fix commit exists yet, create one.
+2. Break up the feature into multiple commits if necessary. Commit messages should be a concise title without tags like "feat" and a short body.
+3. Open relevant ts/tsx files before writing code.
+4. Commit using `lint-commit.sh`:
    ```bash
    ~/.cursor/commands/lint-commit.sh -m "commit message" [files...]
    ```
    You can optionally pass specific files to scope the commit.
-4. **Fixup commits**: When a change logically amends an earlier commit on the branch (e.g. fixing a typo from commit A, adding a missed import for commit B, adjusting behavior introduced in a prior commit), use a fixup commit instead of a standalone commit:
+5. **Fixup commits**: When a change logically amends an earlier commit on the branch (e.g. fixing a typo from commit A, adding a missed import for commit B, adjusting behavior introduced in a prior commit), use a fixup commit instead of a standalone commit:
    ```bash
    ~/.cursor/commands/lint-commit.sh --fixup <hash> [files...]
    ```
    This marks the commit for automatic squashing into the target commit. Use `git log --oneline` to find the target hash.
-5. In a **dedicated final commit** (not mixed with code changes), include a `CHANGELOG.md` entry using format: `- type: description`
+6. Include a `CHANGELOG.md` entry in the **last feature commit** (not a separate commit) using format: `- type: description`
    - Types: `added`, `changed`, `fixed`
    - Example: `- added: New short feature description`
    - Entries are grouped by type in order: all `added`, then all `changed`, then all `fixed`
-   - CHANGELOG.md must ONLY appear in this final commit — never in intermediate feature commits
+   - CHANGELOG.md must ONLY appear in the last commit — never in intermediate feature commits
    - Avoid reading more than 50 lines of the file
    - **Which section** (see CHANGELOG placement rules below)
 </step>

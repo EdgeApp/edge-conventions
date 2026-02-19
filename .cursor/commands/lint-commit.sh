@@ -160,6 +160,13 @@ fi
 # Step 4: Stage everything and commit
 echo ">> git add -A && git commit"
 git add -A
+
+# Graduate files from eslint warning-override list if the repo has the script
+if node -e "process.exit(require('./package.json').scripts?.['update-eslint-warnings'] ? 0 : 1)" 2>/dev/null; then
+  echo ">> update-eslint-warnings"
+  npm run --silent update-eslint-warnings
+fi
+
 if [[ -n "$FIXUP" ]]; then
   git commit --no-verify --fixup "$FIXUP"
 else

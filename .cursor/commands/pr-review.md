@@ -92,6 +92,7 @@ After submitting (or if no findings), provide a summary in the chat response:
 - Number of files reviewed
 - Findings by category (critical, warning, suggestion)
 - Link to the submitted review
+ - PR link [PR title](https://github.com/EdgeApp/<repo>/pull/5952)
 </step>
 
 <edge-cases>

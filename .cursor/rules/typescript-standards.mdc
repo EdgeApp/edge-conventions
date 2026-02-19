@@ -92,6 +92,11 @@ Exception: Empty handlers are acceptable ONLY when the rejection is an expected 
 ✅ `const countryCode = useSelector(state => state.ui.settings.countryCode)`
 </standard>
 
+<standard id="simple-selectors">Keep `useSelector` callbacks simple — only access state, never derive. Derivation logic belongs in `useMemo` (or inline) after all referenced variables are declared. Selector callbacks run on every store update and can reference hoisted-but-uninitialized variables, causing silent bugs.
+❌ `const result = useSelector(state => { const x = expensiveFn(someVar, state.foo); return x })`
+✅ `const foo = useSelector(state => state.foo)` then `const result = useMemo(() => expensiveFn(someVar, foo), [someVar, foo])`
+</standard>
+
 <standard id="component-typing">Use `React.FC<Props>` for component exports. Use `React.ReactElement` for non-component render functions.
 ❌ `const Component = (props: Props): React.JSX.Element => {`
 ✅ `const Component: React.FC<Props> = props => {`
