@@ -11,10 +11,10 @@ Review code changes for quality and convention compliance. Supports both GitHub 
 
 Extract the branch reference from the user's message. This can be one of:
 
-1. **GitHub PR URL**: e.g., `https://github.com/EdgeApp/edge-react-gui/pull/123`
-2. **GitHub PR number**: e.g., `#123` or `PR 123` (requires repository context)
-3. **Local branch name**: e.g., `feature/my-branch` or `paul/syncGitCouch`
-4. **Current branch**: User says "review current branch" or similar
+1. **Current branch**: User says "review current branch" or similar
+2. **Local branch name**: e.g., `feature/my-branch` or `paul/syncGitCouch`
+3. **GitHub PR URL**: e.g., `https://github.com/EdgeApp/edge-react-gui/pull/123`
+4. **GitHub PR number**: e.g., `#123` or `PR 123` (requires repository context)
 
 ### For GitHub Pull Requests
 
@@ -31,7 +31,7 @@ If a PR URL or number is provided:
 
 If a branch name is provided (not a PR):
 
-1. Identify the repository from the user's prompt or use the current working directory
+1. Identify the repository from the current working directory or the user's prompt
 2. Change to that repository directory
 3. Verify the branch exists and check it out:
    ```bash
@@ -44,7 +44,8 @@ If a branch name is provided (not a PR):
    ```bash
    git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'
    ```
-5. Skip the GitHub MCP sections and proceed directly to **Review Process**
+5. If the branch has uncommitted or unstaged changes (no commits beyond the base), use `git diff` for unstaged changes and `git diff --cached` for staged changes instead of `git diff <base>...HEAD`. No git checkout operations are needed in this case.
+6. Skip the GitHub MCP sections and proceed directly to **Review Process**
 
 ## Repository Synchronization (GitHub PRs)
 
