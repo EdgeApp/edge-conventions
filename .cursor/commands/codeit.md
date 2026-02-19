@@ -72,7 +72,12 @@ Iterate until the code passes review (maximum 5 iterations):
 
 1. Report success to the user
 2. Summarize the implementation and any fixes made
-3. Restore stashed changes only if a stash was created in Phase 1 (run `git stash pop`)
+3. Restore stashed changes only if a stash was created in Phase 1:
+   - Check for uncommitted implementation changes: `git diff --quiet && git diff --cached --quiet`
+   - If there are implementation changes (command returns non-zero), stash them first: `git stash push -m "codeit: implementation changes"`
+   - Pop the original user's stash: `git stash pop stash@{1}` (the original stash is now at index 1)
+   - Pop the implementation stash: `git stash pop` (restores implementation changes on top)
+   - If the working directory was clean, simply run `git stash pop`
 
 ## Constraints
 

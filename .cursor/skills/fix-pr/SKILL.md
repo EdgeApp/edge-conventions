@@ -105,8 +105,10 @@ For each fix in the plan:
 5. Make the necessary code changes (edit files, stage them)
 6. Test changes with `yarn precommit` and fix any failures
 7. Stage and create the fixup commit: `git add -A && git commit --fixup HEAD --no-verify`
-8. Cherry-pick remaining commits: `git cherry-pick "${FIXUPHASH}..${BRANCHHEAD}"`
-9. Resolve any conflicts
+8. Cherry-pick remaining commits (only if there are subsequent commits):
+   - If `FIXUPHASH` equals `BRANCHHEAD`, skip this step (fixing the most recent commit requires no cherry-pick)
+   - Otherwise, run: `git cherry-pick "${FIXUPHASH}..${BRANCHHEAD}"`
+9. Resolve any conflicts (if cherry-pick was performed)
 10. Update the branch to the new history: `git checkout -B <branch-name>`
 
 Repeat for each fix item. **Important**: After each iteration, the branch history is rewritten, so commit hashes from the original plan are no longer valid. Always re-identify commits using `git log` at the start of each iteration.
