@@ -68,6 +68,25 @@ Instructions for this step.
 </template>
 </formatting>
 
+<small-model-conventions description="Apply these when the command will run on smaller/faster models (e.g., the user says 'for smaller models', 'optimize for lite/fast', or the command is high-frequency and must be cheap). These patterns compensate for weaker instruction-following and shorter reasoning chains.">
+
+<convention id="verbatim-bash">Give exact shell commands to copy-paste, not descriptions of what to run. Smaller models copy verbatim; they struggle to construct commands from prose. Include placeholders like `<upstream-ref>` only where the agent must substitute a value.</convention>
+
+<convention id="file-over-args">Pass multi-line content (PR bodies, commit messages, JSON payloads) via temp files, not shell arguments. Write content using the Write tool, then pass `--body-file /tmp/foo.md` to the script. This avoids shell escaping failures that smaller models cannot debug.</convention>
+
+<convention id="exact-output-templates">When the command produces formatted output (markdown, JSON, reports), show the exact template line-by-line with placeholders. Include blank lines and heading levels explicitly. Example: show `## Accomplishments {day_label}` not "add a heading for accomplishments."</convention>
+
+<convention id="explicit-parallel">Spell out parallel tool calls: "Run both scripts **in parallel** (two Shell tool calls in one message)." Smaller models default to sequential unless explicitly told otherwise.</convention>
+
+<convention id="priority-ordered-decisions">When the agent must categorize or choose between options, use a numbered priority list — not prose. Example: "1. If X → do A. 2. If Y → do B. 3. Otherwise → do C." Smaller models follow numbered sequences reliably; they lose track of nested if/else prose.</convention>
+
+<convention id="inline-guardrails">Duplicate critical rules from cross-referenced files as top-level `<rule>` tags. Smaller models skip "Read file X now" instructions despite explicit language. One-liner guardrails (e.g., `commit-script`, `changelog-required`) catch the failure mode where the cross-read is skipped entirely.</convention>
+
+<convention id="no-implicit-steps">Every action needs an explicit instruction. Never rely on "follow best practices" or "use appropriate patterns." If the agent should run `git push -u origin HEAD`, write that exact command — don't say "push the branch."</convention>
+
+<convention id="single-tool-per-step">Where possible, design steps so each step is ONE tool call. Smaller models lose track of multi-tool steps. If a step requires multiple calls, break it into sub-steps with explicit sequencing ("After step 2a completes, run step 2b").</convention>
+</small-model-conventions>
+
 <revision-checklist>
 When revising an existing command, **every item below is mandatory** — not a suggestion. Older commands may predate current best practices; touching a command is an opportunity to bring it up to spec.
 
@@ -79,6 +98,7 @@ When revising an existing command, **every item below is mandatory** — not a s
 6. Confirm companion scripts match the `.md` expectations
 7. Convert markdown-structured commands to XML format (this is the most commonly skipped item — `##` headers and bullet lists must become `<goal>`, `<rules>`, `<step>` tags)
 8. Apply all current authoring principles (rules-first, scripts-over-reasoning, batch-tool-calls, etc.) even if the original command predates them
+9. If the command may run on smaller/faster models, apply `<small-model-conventions>` — especially `file-over-args`, `inline-guardrails`, and `verbatim-bash`
 </revision-checklist>
 
 <companion-scripts>
