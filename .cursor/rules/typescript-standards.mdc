@@ -35,7 +35,7 @@ alwaysApply: false
 Exception: Empty handlers are acceptable ONLY when the rejection is an expected user action (e.g., user cancelled a modal) AND there's nothing to clean up.
 </rule>
 
-<rule id="catch-typing">Catch blocks MUST use `(err: unknown) => {...}` format.</rule>
+<rule id="catch-typing">Catch blocks MUST use `(error: unknown) => {...}` format.</rule>
 
 <rule id="no-void-operator">Do not use the `void` operator to silence Promise returns. Create a non-async handler wrapping the async call with explicit error handling.
 ❌ `onSwipe={() => { void doAsync() }}`
@@ -102,9 +102,22 @@ Exception: Empty handlers are acceptable ONLY when the rejection is an expected 
 ✅ `const Component: React.FC<Props> = props => {`
 </standard>
 
+<standard id="descriptive-variable-names">Use descriptive variable names that clearly indicate their purpose. Avoid single/few-letter variables except in trivial cases (loop counters, mathematical formulas).
+❌ `const s = asMaybePrivateNetworkingSetting(cfg.userSettings)`
+❌ `const ds = asMaybePrivateNetworkingSetting(cfg.currencyInfo.defaultSettings)`
+❌ `return (s ?? ds)?.networkPrivacy === 'nym'`
+✅ `const userSettings = asMaybePrivateNetworkingSetting(currencyConfig.userSettings)`
+✅ `return userSettings?.networkPrivacy === 'nym'`
+</standard>
+
 <standard id="useeffect-cleanup">Always include cleanup functions in `useEffect` hooks that create timers, intervals, subscriptions, or other side effects.</standard>
 
 <standard id="comments-current-state">Code comments and READMEs document the current state of the code, not the history of changes.</standard>
+
+<standard id="biggystring-arithmetic">Use `biggystring` for all numeric calculations involving crypto amounts, fiat values, or exchange rates. Native JS floating-point math loses precision. Values from `convertCurrency`, `convertNativeToExchange`, and similar helpers are already biggystring-compatible strings.
+❌ `const impact = (parseFloat(from) - parseFloat(to)) / parseFloat(from)`
+✅ `const impact = div(sub(from, to), from, 8)`
+</standard>
 
 </standards>
 

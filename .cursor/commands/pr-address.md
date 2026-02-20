@@ -1,4 +1,4 @@
-<goal>Address PR feedback with fixup commits, using snapshot-first context and companion script for all deterministic operations.</goal>
+<goal>Address PR feedback with fixup commits, resolving each comment after replying with how it was addressed.</goal>
 
 <rules description="Non-negotiable constraints.">
 <rule id="use-companion-script">Do NOT call `gh` directly. Use `~/.cursor/commands/pr-address.sh` for all GitHub API interactions (it uses `gh` internally).</rule>
@@ -8,44 +8,27 @@
 <rule id="this-file-wins">If any other instruction conflicts with this file, **this file wins** for `pr-address`.</rule>
 <rule id="commit-via-script">Commit fixups using `~/.cursor/commands/lint-commit.sh -m "fixup! {headline}" [files...]`. Do NOT manually run eslint — the commit script handles it.</rule>
 <rule id="script-timeouts">GitHub API scripts can take up to 30s. Set `block_until_ms: 60000` when invoking `pr-address.sh`.</rule>
+<rule id="reply-before-resolve">ALWAYS reply explaining how a comment was addressed BEFORE resolving or marking it. No silent resolutions.</rule>
+<rule id="resolution-source-of-truth">Only explicitly resolved threads (`isResolved: true`) or `<!-- addressed:... -->` markers count as resolved. Recency (commits after a comment) does NOT mean resolved.</rule>
 </rules>
 
-<step id="1" name="Gather PR context">
-Read the PR snapshot if available (fast, no network). Fall back to live API if missing.
-
-<sub-step name="Snapshot available">
-If the user referenced the PR via `@PR ...`, Cursor writes a snapshot folder. Read it:
-
-```bash
-~/.cursor/commands/pr-address.sh context --pr-dir "<snapshot-dir>"
-```
-
-Also read `comments.json` directly for full thread details including `threadsByFile`.
-</sub-step>
-
-<sub-step name="Snapshot missing or stale">
-Fetch live from GitHub:
+<step id="1" name="Fetch all unresolved feedback">
+Always fetch live from GitHub. The script returns all unresolved feedback — no recency filtering.
 
 ```bash
 ~/.cursor/commands/pr-address.sh fetch --owner <OWNER> --repo <REPO> --pr <NUMBER>
 ```
 
 If the script exits code 2 with `PROMPT_GH_AUTH`, prompt: "`gh` CLI is not authenticated. Please run: `gh auth login`"
-</sub-step>
+
+The output contains three categories:
+- **threads**: Unresolved inline review threads (with `threadId`, `path`, `line`, comment details)
+- **reviewBodies**: Latest review body per non-author/non-bot reviewer (with `reviewId`, `state`, `body`)
+- **topLevel**: Non-author/non-bot top-level comments not yet marked addressed
 </step>
 
-<step id="2" name="Classify comments by recency">
-Compare each comment's `createdAt` against the last commit timestamp (`git log -1 --format='%aI'`):
-
-- **NEW**: `createdAt > lastCommitTime` — address automatically
-- **OLD unresolved**: `createdAt <= lastCommitTime && !isResolved` — note for step 5
-
-If there are NO new comments but OLD unresolved exist, prompt immediately:
-> "No new comments since last commit. There are N older unresolved comments. Address them? [y/N]"
-</step>
-
-<step id="3" name="Process comments">
-Group NEW comments by file. If the user provided specific files, scope to those only.
+<step id="2" name="Process all unresolved feedback">
+Address every item returned by `fetch`. Group inline threads by file. If the user provided specific files, scope to those only.
 
 <sub-step name="Apply fixes">
 1. Read each file with comments
@@ -70,24 +53,46 @@ Get the target commit headline:
 git log -1 --format='%s' <commit_sha>
 ```
 </sub-step>
+</step>
 
-<sub-step name="Reply to comments">
-Reply to ALL processed comments — both addressed and rejected.
+<step id="3" name="Reply and resolve each comment">
+After fixing, reply to every processed comment — addressed or rejected — then resolve it.
+
+<sub-step name="Inline threads (reply → resolve)">
+1. Reply to the first comment in the thread:
+   ```bash
+   ~/.cursor/commands/pr-address.sh reply \
+     --owner <OWNER> --repo <REPO> --pr <NUMBER> \
+     --comment-id <NUMERIC_ID> --body "<what was fixed>"
+   ```
+
+   If the comment ID is a GraphQL node ID, resolve to numeric first:
+   ```bash
+   ~/.cursor/commands/pr-address.sh resolve-id \
+     --owner <OWNER> --repo <REPO> --pr <NUMBER> \
+     --node-id "<PRRC_nodeId>"
+   ```
+
+2. Then mark the thread as resolved:
+   ```bash
+   ~/.cursor/commands/pr-address.sh resolve-thread --thread-id "<PRRT_threadNodeId>"
+   ```
+</sub-step>
+
+<sub-step name="Review bodies and top-level comments (reply → mark addressed)">
+These have no native resolution mechanism. Post a top-level comment with a machine-readable marker:
 
 ```bash
-~/.cursor/commands/pr-address.sh reply \
+~/.cursor/commands/pr-address.sh mark-addressed \
   --owner <OWNER> --repo <REPO> --pr <NUMBER> \
-  --comment-id <NUMERIC_ID> --body "<reply text>"
+  --type <review|comment> --target-id <NUMERIC_ID> \
+  --body "<what was fixed>"
 ```
 
-If the snapshot uses GraphQL node IDs, resolve to numeric first:
-```bash
-~/.cursor/commands/pr-address.sh resolve-id \
-  --owner <OWNER> --repo <REPO> --pr <NUMBER> \
-  --node-id "<PRRC_nodeId>"
-```
+The script appends `<!-- addressed:review:ID -->` or `<!-- addressed:comment:ID -->` to the body. Subsequent `fetch` calls detect these markers and exclude already-addressed items.
+</sub-step>
 
-**Reply guidelines:**
+<sub-step name="Reply guidelines">
 - **Addressed**: State what was fixed. Factual, 1 sentence.
 - **Invalid/false-positive**: Brief evidence citing code paths or logic. 1-3 sentences.
 - No pleasantries. Factual tone only.
@@ -106,16 +111,7 @@ If conflicts occur, resolve them, then: `GIT_EDITOR=true git rebase --continue`.
 Then force push: `git push --force-with-lease`.
 </step>
 
-<step id="5" name="Prompt for older unresolved comments">
-After processing NEW comments, if OLD unresolved comments remain, prompt:
-> "Addressed N new comments. There are M older unresolved comments remaining:
-> - [file:line] comment summary...
-> Address these as well? [y/N]"
-
-If confirmed, repeat step 3 for older comments.
-</step>
-
-<step id="6" name="Verification">
+<step id="5" name="Verification">
 Run full verification to catch issues introduced by fixup commits:
 
 ```bash
@@ -127,13 +123,13 @@ Where `<upstream-ref>` is `origin/develop` for `edge-react-gui` or `origin/maste
 If verification fails, fix the issue with another fixup commit, then re-run verification.
 </step>
 
-<step id="7" name="Post-processing">
+<step id="6" name="Post-processing">
 Propose modifications to `~/.cursor/rules/typescript-standards.mdc` to prevent similar review comments in the future. Prompt for confirmation before applying.
 </step>
 
 <edge-cases>
 <case name="No gh auth">Script exits code 2 with `PROMPT_GH_AUTH`. Prompt user to run `gh auth login` and STOP.</case>
-<case name="Stale snapshot">If the snapshot `fetchedAt` predates the last push, prefer live data via `pr-address.sh fetch`.</case>
-<case name="No new comments">Skip step 3. Go directly to step 5 to prompt about old unresolved comments.</case>
+<case name="No unresolved feedback">Report "No unresolved comments on this PR" and STOP.</case>
 <case name="Human reviewer comments">Do NOT autosquash. Leave fixup commits for the reviewer to verify, then squash on merge.</case>
+<case name="Comment already addressed in code">If the current code already handles the feedback (e.g., from a previous fixup), still reply explaining this and resolve/mark the comment. Do not leave it unresolved.</case>
 </edge-cases>

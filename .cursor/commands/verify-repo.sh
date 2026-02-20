@@ -14,13 +14,16 @@ const { execSync } = require("child_process");
 const { readFileSync, existsSync } = require("fs");
 const path = require("path");
 
-// Parse arguments: positional repo-dir + optional --base <ref>
+// Parse arguments: positional repo-dir + optional --base <ref> + optional --require-changelog
 let repoDir = process.cwd();
 let baseRef = null;
+let requireChangelog = false;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--base" && i + 1 < args.length) {
     baseRef = args[++i];
+  } else if (args[i] === "--require-changelog") {
+    requireChangelog = true;
   } else if (!args[i].startsWith("--")) {
     repoDir = args[i];
   }
@@ -61,41 +64,84 @@ function verifyChangelog() {
   const warnings = [];
   let hasStagingSection = false;
   let hasUnreleasedSection = false;
-  let inUnreleasedSection = false;
-  let inStagingSection = false;
+
+  const TYPE_ORDER = ["added", "changed", "deprecated", "fixed", "removed", "security"];
+
+  function entryType(line) {
+    const m = line.match(/^- (\w+):/i);
+    return m ? m[1].toLowerCase() : null;
+  }
+
+  let currentSection = null;
+  let sectionEntries = [];
+  let sectionStartLine = 0;
+
+  function validateSection() {
+    if (currentSection == null) return;
+    const isActive = currentSection === "unreleased" || currentSection === "staging";
+    if (!isActive) return;
+
+    // Empty section check removed — emptiness is validated per-PR via --require-changelog
+
+    const seen = new Set();
+    for (const { text, lineNum } of sectionEntries) {
+      const normalized = text.replace(/\s+/g, " ").trim();
+      if (seen.has(normalized)) {
+        errors.push(`Line ${lineNum}: Duplicate entry in ${currentSection}: "${text.slice(0, 60)}..."`);
+      }
+      seen.add(normalized);
+    }
+
+    let lastTypeIdx = -1;
+    for (const { text, lineNum } of sectionEntries) {
+      const type = entryType(text);
+      if (type == null) continue;
+      const idx = TYPE_ORDER.indexOf(type);
+      if (idx === -1) continue;
+      if (idx < lastTypeIdx) {
+        const expected = TYPE_ORDER[lastTypeIdx];
+        errors.push(`Line ${lineNum}: "${type}" entry after "${expected}" in ${currentSection} — expected order: ${TYPE_ORDER.join(", ")}`);
+      }
+      lastTypeIdx = idx;
+    }
+  }
 
   for (let i = 0; i < lines.length; i++) {
     const line = lines[i];
     const lineNum = i + 1;
 
-    // Check for conflict markers
     if (line.startsWith("<<<<<<<") || line.startsWith("=======") || 
         line.startsWith(">>>>>>>") || line.startsWith("|||||||")) {
       errors.push(`Line ${lineNum}: Unresolved conflict marker: "${line.slice(0, 40)}..."`);
     }
 
-    // Track section headers
     if (line.match(/^## Unreleased/i)) {
+      validateSection();
       hasUnreleasedSection = true;
-      inUnreleasedSection = true;
-      inStagingSection = false;
+      currentSection = "unreleased";
+      sectionEntries = [];
+      sectionStartLine = lineNum;
     } else if (line.match(/^## .+\(staging\)/i)) {
+      validateSection();
       hasStagingSection = true;
-      inUnreleasedSection = false;
-      inStagingSection = true;
+      currentSection = "staging";
+      sectionEntries = [];
+      sectionStartLine = lineNum;
     } else if (line.match(/^## \d+\.\d+\.\d+/)) {
-      inUnreleasedSection = false;
-      inStagingSection = false;
+      validateSection();
+      currentSection = "released";
+      sectionEntries = [];
+      sectionStartLine = lineNum;
     }
 
-    // Check entry format in unreleased/staging sections
-    if ((inUnreleasedSection || inStagingSection) && line.startsWith("- ")) {
-      if (!line.match(/^- (added|changed|fixed|deprecated|removed|security):/i)) {
+    if (currentSection != null && line.startsWith("- ")) {
+      sectionEntries.push({ text: line, lineNum });
+      const isActive = currentSection === "unreleased" || currentSection === "staging";
+      if (isActive && !line.match(/^- (added|changed|fixed|deprecated|removed|security):/i)) {
         warnings.push(`Line ${lineNum}: Entry may not follow "- type: description" format`);
       }
     }
 
-    // Check for empty or malformed list items
     if (line.match(/^-\s*$/)) {
       errors.push(`Line ${lineNum}: Empty list item found`);
     }
@@ -103,6 +149,7 @@ function verifyChangelog() {
       errors.push(`Line ${lineNum}: Malformed list item`);
     }
   }
+  validateSection();
 
   if (!hasUnreleasedSection && !hasStagingSection) {
     errors.push("No '## Unreleased' or staging section found");
@@ -222,6 +269,24 @@ const changelogResult = verifyChangelog();
 if (!changelogResult.success) {
   console.error("\n=== Verification FAILED (CHANGELOG) ===");
   process.exit(2);
+}
+
+if (requireChangelog && baseRef) {
+  console.log("▶  CHANGELOG entry existence check...");
+  try {
+    const diff = execSync(`git diff --name-only ${baseRef}...HEAD -- CHANGELOG.md`, {
+      cwd: repoDir, encoding: "utf8"
+    }).trim();
+    if (diff.length === 0) {
+      console.error("✗  No CHANGELOG.md changes found but PR requires a changelog entry");
+      console.error("\n=== Verification FAILED (CHANGELOG) ===");
+      process.exit(2);
+    }
+    console.log("✓  CHANGELOG entry exists in diff");
+  } catch (e) {
+    console.error(`✗  Failed to check CHANGELOG diff: ${e.message}`);
+    process.exit(2);
+  }
 }
 
 const codeResult = verifyCode();

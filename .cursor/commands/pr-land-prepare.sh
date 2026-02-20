@@ -13,10 +13,8 @@
 //   5. Run full verification (CHANGELOG + code)
 //
 // Exit codes:
-//   0 = All branches prepared successfully
-//   1 = Verification failed
-//   2 = Code conflict detected (STOP - requires manual resolution)
-//   3 = Staging section conflict (STOP - requires user guidance)
+//   0 = At least one branch prepared (or has resolvable CHANGELOG conflict)
+//   1 = All branches failed (verification or other errors, none ready)
 //
 // Output: JSON with results for each branch
 
@@ -29,7 +27,6 @@ const {
   runGit,
   parseConflictFiles,
   isChangelogOnly,
-  hasStagingConflict,
   runVerification,
 } = require(path.join(__dirname, "edge-repo.js"));
 
@@ -101,16 +98,6 @@ async function prepareBranch(repo, branch) {
 
     console.error(`Conflict detected in: ${conflictFiles.join(", ")}`);
 
-    if (hasStagingConflict(repoDir)) {
-      console.error("\n=== STOP: Staging section conflict ===");
-      runGit(["rebase", "--abort"], repoDir, { allowFailure: true });
-      result.status = "staging_conflict";
-      result.message =
-        "Conflict in CHANGELOG staging section - requires user guidance";
-      result.conflictFiles = conflictFiles;
-      return result;
-    }
-
     if (conflictFiles.some((f) => !f.includes("CHANGELOG"))) {
       console.error("\n=== Skipping: Code conflict detected ===");
       for (const f of conflictFiles) {
@@ -164,7 +151,6 @@ async function main() {
     failed: [],
     skipped: [],
     changelogConflicts: [],
-    stagingConflicts: [],
   };
 
   let exitCode = 0;
@@ -178,10 +164,6 @@ async function main() {
         break;
       case "code_conflict":
         results.skipped.push(result);
-        break;
-      case "staging_conflict":
-        results.stagingConflicts.push(result);
-        exitCode = Math.max(exitCode, 3);
         break;
       case "changelog_conflict":
         results.changelogConflicts.push(result);
@@ -206,14 +188,6 @@ async function main() {
       console.error(
         `  ⚠ ${r.repo}/${r.branch}: ${r.conflictFiles?.join(", ")}`
       );
-    }
-  }
-  if (results.stagingConflicts.length > 0) {
-    console.error(
-      `\nStaging conflicts - STOP (${results.stagingConflicts.length}):`
-    );
-    for (const r of results.stagingConflicts) {
-      console.error(`  ✗ ${r.repo}/${r.branch}: Staging section conflict`);
     }
   }
   if (results.changelogConflicts.length > 0) {

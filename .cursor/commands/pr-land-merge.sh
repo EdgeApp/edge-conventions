@@ -17,14 +17,12 @@
 //   1. Each PR is rebased onto latest upstream before merge (handles sequential merges)
 //   2. Verification runs before EVERY merge (no bypass)
 //   3. Code conflicts → Skip PR, continue with remaining
-//   4. Staging section conflicts → STOP immediately (needs workflow guidance)
-//   5. CHANGELOG-only conflicts → Agent can resolve, then re-run
-//   6. Already-merged PRs are detected and skipped on re-runs
+//   4. CHANGELOG-only conflicts → Agent can resolve, then re-run
+//   5. Already-merged PRs are detected and skipped on re-runs
 //
 // Exit codes:
 //   0 = All (non-skipped) PRs merged successfully
 //   1 = Verification failed
-//   3 = Staging section conflict (STOP - needs workflow guidance)
 //   4 = CHANGELOG-only conflict (agent can resolve semantically)
 
 const { spawnSync } = require("child_process");
@@ -35,7 +33,6 @@ const {
   runGit,
   parseConflictFiles,
   isChangelogOnly,
-  hasStagingConflict,
   runVerification,
   ghApi,
 } = require(path.join(__dirname, "edge-repo.js"));
@@ -58,7 +55,7 @@ if (!["merge", "squash", "rebase"].includes(mergeMethod)) {
 /**
  * Rebase a branch onto the latest upstream.
  * Returns: { status, conflictFiles? }
- *   status: "success" | "changelog_conflict" | "code_conflict" | "staging_conflict" | "error"
+ *   status: "success" | "changelog_conflict" | "code_conflict" | "error"
  *
  * On changelog_conflict, the rebase is LEFT IN PROGRESS for agent resolution.
  * On all other failures, the rebase is aborted to leave the repo clean.
@@ -97,11 +94,6 @@ function rebaseOntoUpstream(repoDir, branch, repo) {
         }
       }
     } catch {}
-  }
-
-  if (hasStagingConflict(repoDir)) {
-    runGit(["rebase", "--abort"], repoDir, { allowFailure: true });
-    return { status: "staging_conflict", conflictFiles };
   }
 
   if (conflictFiles.some((f) => !f.includes("CHANGELOG"))) {
@@ -213,22 +205,6 @@ async function main() {
     // STEP 1: Rebase onto latest upstream
     console.error("Rebasing onto latest upstream...");
     const rebaseResult = rebaseOntoUpstream(repoDir, branch, repo);
-
-    if (rebaseResult.status === "staging_conflict") {
-      console.error("\n=== STOP: Staging section conflict ===");
-      results.conflict = {
-        repo,
-        prNumber,
-        branch,
-        repoDir,
-        reason: "Staging section conflict",
-        type: "staging",
-      };
-      results.status = "staging_conflict_stopped";
-      results.pending = prs.slice(i + 1);
-      exitCode = 3;
-      break;
-    }
 
     if (rebaseResult.status === "changelog_conflict") {
       console.error("\n=== CHANGELOG conflict — agent resolution needed ===");
@@ -366,9 +342,7 @@ async function main() {
     }
   }
   if (results.conflict) {
-    const label =
-      results.conflict.type === "staging" ? "Staging conflict" : "Conflict";
-    console.error(`\n${label} (STOPPED):`);
+    console.error(`\nConflict (STOPPED):`);
     console.error(
       `  ✗ ${results.conflict.repo}#${results.conflict.prNumber}: ${results.conflict.reason}`
     );

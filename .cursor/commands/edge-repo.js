@@ -2,7 +2,7 @@
 // Common functions for repo discovery, git operations, and conflict handling.
 // Used by: pr-land-prepare.sh, pr-land-merge.sh, pr-land-publish.sh
 const { spawnSync, execSync } = require("child_process");
-const { existsSync, readFileSync } = require("fs");
+const { existsSync } = require("fs");
 const path = require("path");
 const os = require("os");
 
@@ -63,26 +63,7 @@ function isChangelogOnly(files) {
   );
 }
 
-function hasStagingConflict(repoDir) {
-  const changelogPath = path.join(repoDir, "CHANGELOG.md");
-  if (!existsSync(changelogPath)) return false;
-  try {
-    const lines = readFileSync(changelogPath, "utf8").split("\n");
-    let inStaging = false;
-    for (const line of lines) {
-      if (line.match(/^## .+\(staging\)/i)) inStaging = true;
-      else if (line.match(/^## /)) inStaging = false;
-      if (
-        inStaging &&
-        (line.startsWith("<<<<<<<") || line.startsWith("======="))
-      )
-        return true;
-    }
-  } catch {}
-  return false;
-}
-
-function runVerification(repoDir, baseRef) {
+function runVerification(repoDir, baseRef, options = {}) {
   const verifyScript = path.join(
     os.homedir(),
     ".cursor",
@@ -90,11 +71,12 @@ function runVerification(repoDir, baseRef) {
     "verify-repo.sh"
   );
   const baseArg = baseRef != null ? ` --base "${baseRef}"` : "";
+  const changelogArg = options.requireChangelog ? " --require-changelog" : "";
   try {
-    execSync(`node "${verifyScript}" "${repoDir}"${baseArg}`, {
-      stdio: "inherit",
-      encoding: "utf8",
-    });
+    execSync(
+      `node "${verifyScript}" "${repoDir}"${baseArg}${changelogArg}`,
+      { stdio: "inherit", encoding: "utf8" }
+    );
     return { success: true };
   } catch (e) {
     return { success: false, exitCode: e.status };
@@ -157,7 +139,6 @@ module.exports = {
   runGit,
   parseConflictFiles,
   isChangelogOnly,
-  hasStagingConflict,
   runVerification,
   ghApi,
   ghGraphql,

@@ -1,1 +1,1 @@
-Read and follow `~/.cursor/skills/command-builder/SKILL.md`.
+Read and follow `~/.cursor/skills/author/SKILL.md`.

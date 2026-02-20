@@ -89,6 +89,9 @@ if (!title) {
   }
 }
 
+// Read body from file if provided
+let body = bodyFile ? fs.readFileSync(bodyFile, "utf8") : null;
+
 // Build body from template if not provided
 if (!body) {
   const isGui = repo === "edge-react-gui";
@@ -136,11 +139,14 @@ if (!body) {
   }
 }
 
-// Create PR via gh CLI
-const ghArgs = ["pr", "create", "--title", title, "--body", body];
+// Create PR via gh CLI — write body to a temp file to avoid arg length issues
+const tmpBody = path.join(os.tmpdir(), `pr-body-${process.pid}.md`);
+fs.writeFileSync(tmpBody, body, "utf8");
+const ghArgs = ["pr", "create", "--title", title, "--body-file", tmpBody];
 if (draft) ghArgs.push("--draft");
 
 const result = spawnSync("gh", ghArgs, { encoding: "utf8" });
+try { fs.unlinkSync(tmpBody); } catch {}
 if (result.status !== 0) {
   console.error("ERROR:", (result.stderr || "").trim());
   process.exit(1);
