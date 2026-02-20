@@ -42,6 +42,17 @@ new_json="[]"
 mod_json="[]"
 del_json="[]"
 
+# Check README.md separately (single file, not a directory)
+if [[ -f "$USER_DIR/README.md" ]]; then
+  if [[ ! -f "$REPO_CURSOR/README.md" ]]; then
+    new_json=$(echo "$new_json" | jq '. + ["README.md"]')
+  elif ! diff -q "$USER_DIR/README.md" "$REPO_CURSOR/README.md" >/dev/null 2>&1; then
+    mod_json=$(echo "$mod_json" | jq '. + ["README.md"]')
+  fi
+elif [[ -f "$REPO_CURSOR/README.md" ]]; then
+  del_json=$(echo "$del_json" | jq '. + ["README.md"]')
+fi
+
 for dir in $DIRS; do
   user_path="$USER_DIR/$dir"
   repo_path="$REPO_CURSOR/$dir"
@@ -80,8 +91,13 @@ if [[ "$DO_STAGE" == true && "$total" -gt 0 ]]; then
   if [[ "$DIRECTION" == "user-to-repo" ]]; then
     while IFS= read -r f; do
       [[ -z "$f" ]] && continue
-      mkdir -p "$(dirname "$REPO_CURSOR/$f")"
-      cp "$USER_DIR/$f" "$REPO_CURSOR/$f"
+      # README.md is at .cursor/ root, others are in subdirs
+      if [[ "$f" == "README.md" ]]; then
+        cp "$USER_DIR/$f" "$REPO_CURSOR/$f"
+      else
+        mkdir -p "$(dirname "$REPO_CURSOR/$f")"
+        cp "$USER_DIR/$f" "$REPO_CURSOR/$f"
+      fi
     done <<< "$all_copy"
 
     while IFS= read -r f; do
@@ -106,8 +122,12 @@ if [[ "$DO_STAGE" == true && "$total" -gt 0 ]]; then
   else
     while IFS= read -r f; do
       [[ -z "$f" ]] && continue
-      mkdir -p "$(dirname "$USER_DIR/$f")"
-      cp "$REPO_CURSOR/$f" "$USER_DIR/$f"
+      if [[ "$f" == "README.md" ]]; then
+        cp "$REPO_CURSOR/$f" "$USER_DIR/$f"
+      else
+        mkdir -p "$(dirname "$USER_DIR/$f")"
+        cp "$REPO_CURSOR/$f" "$USER_DIR/$f"
+      fi
     done <<< "$all_copy"
 
     while IFS= read -r f; do

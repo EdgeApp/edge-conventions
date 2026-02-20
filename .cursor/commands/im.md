@@ -3,7 +3,7 @@
 <rules description="Non-negotiable constraints.">
 <rule id="read-coding-standards">Before writing ANY code, read `.cursor/rules/typescript-standards.mdc` and follow all rules and standards in it throughout the implementation.</rule>
 <rule id="no-impl-before-confirm">When an Asana task is provided, do NOT begin implementation until the user confirms the task summary (Step 0).</rule>
-<rule id="lint-before-change">Before the first edit to ANY file, run `npx eslint <file>` (without `--quiet` — warnings must be visible). If warnings or errors exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This applies to every file you touch, including ones discovered mid-implementation — not just the files you planned upfront.</rule>
+<rule id="lint-before-change">Before the first edit to ANY file, run `~/.cursor/commands/lint-warnings.sh <files...>` to check for warnings AND load matching fix patterns into context. If warnings exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This applies to every file you touch, including ones discovered mid-implementation — not just the files you planned upfront.</rule>
 <rule id="no-manual-formatting">Do not manually fix formatting. `lint-commit.sh` runs `eslint --fix` (which includes Prettier) before committing. If you see a formatting lint after editing, do NOT make another edit to fix it.</rule>
 <rule id="commit-script">Always commit using `~/.cursor/commands/lint-commit.sh -m "message" [files...]` or `--fixup <hash>` for fixup commits.</rule>
 <rule id="clean-history">The final commit history must read as a clean, straight-line progression — as if every decision was made correctly up front. Never preserve the "squiggly path" of development (adding then removing code, temporary scaffolding, exploratory commits). If you introduce something in commit A and remove it in commit B, restructure so the final history never contains it. Plan commits proactively to avoid this; when it happens anyway, restructure the branch before finishing.</rule>
@@ -41,25 +41,34 @@ If the task spans multiple repos, note the additional repos but implement in the
 </step>
 
 <step id="2" name="Pre-change lint check">
-**Before writing ANY code**, lint every file you currently plan to modify:
+**Before writing ANY code**, run `lint-warnings.sh` on every file you plan to modify:
 
 ```bash
-npx eslint <file1> <file2> ...
+~/.cursor/commands/lint-warnings.sh <file1> <file2> ...
 ```
 
-Do NOT use `--quiet` — warnings must be visible. If warnings or errors exist, fix ONLY those lint issues and commit them:
+This script:
+1. Runs eslint and shows warnings grouped by rule
+2. Outputs matching fix patterns from `~/.cursor/rules/typescript-standards.mdc`
+3. Flags unmatched rules that need new patterns added
 
-```bash
-~/.cursor/commands/lint-commit.sh -m "Fix lint warnings in <ComponentName>" <file1> <file2> ...
-```
+If warnings exist:
+1. Apply fixes using the matched patterns in the output
+2. For **unmatched rules**: After fixing, add a new `<pattern id="..." rule="...">` to `typescript-standards.mdc` so future occurrences have guidance
+3. Commit lint fixes separately:
+   ```bash
+   ~/.cursor/commands/lint-commit.sh -m "Fix lint warnings in <ComponentName>" <file1> <file2> ...
+   ```
 
-`lint-commit.sh` automatically removes graduated files from `eslint.config.mjs` warning overrides at commit time.
+**Architectural vs mechanical fixes**: If a pattern notes "architectural change" (e.g., `styled()` refactoring), flag to user rather than fixing inline — these changes have broader impact and may warrant separate discussion.
+
+`lint-commit.sh` automatically graduates files from `eslint.config.mjs` warning overrides only if zero warnings remain after the commit.
 
 This ensures the subsequent feature commit introduces zero pre-existing warnings. This is the initial pass — if you discover additional files to modify during Step 3, the same check applies (see Step 3).
 </step>
 
 <step id="3" name="Implementation">
-1. **Lint-check newly discovered files**: If you need to modify a file not covered in Step 2, run `npx eslint <file>` before editing it. If pre-existing warnings exist, fix them and commit as a `--fixup` to the lint-fix commit from Step 2 (use `git log --oneline` to find the hash). If no lint-fix commit exists yet, create one.
+1. **Lint-check newly discovered files**: If you need to modify a file not covered in Step 2, run `~/.cursor/commands/lint-warnings.sh <file>` before editing it. If pre-existing warnings exist, fix them using the matched patterns and commit as a `--fixup` to the lint-fix commit from Step 2 (use `git log --oneline` to find the hash). If no lint-fix commit exists yet, create one.
 2. Break up the feature into multiple commits if necessary. Commit messages should be a concise title without tags like "feat" and a short body.
 3. Open relevant ts/tsx files before writing code.
 4. Commit using `lint-commit.sh`:

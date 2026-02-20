@@ -95,11 +95,12 @@ case "$CMD" in
         }
       }' \
       -f owner="$OWNER" -f repo="$REPO" -F number="$PR" \
-    | node -e "
+    | GH_USER=$(gh api user --jq '.login') node -e "
       const fs = require('fs')
       const data = JSON.parse(fs.readFileSync('/dev/stdin', 'utf8'))
       const pr = data.data.repository.pullRequest
       const prAuthor = pr.author?.login
+      const currentUser = process.env.GH_USER
 
       const addressedIds = new Set()
       for (const c of pr.comments.nodes) {
@@ -107,6 +108,9 @@ case "$CMD" in
           addressedIds.add(Number(m[1]))
         }
       }
+
+      const isBot = u => !u || u.includes('[bot]') || u === 'cursor'
+      const isAutomatedReviewer = u => isBot(u) || u === 'chatgpt-codex-connector'
 
       const threads = pr.reviewThreads.nodes
         .filter(t => !t.isResolved)
@@ -122,7 +126,17 @@ case "$CMD" in
           }))
         }))
 
-      const isBot = u => !u || u.includes('[bot]')
+      // Check if any human (non-bot, non-automated, non-currentUser) reviewer has commented
+      // prAuthor CAN be an external human reviewer if they're not currentUser
+      const humanCommenters = new Set()
+      for (const t of threads) {
+        for (const c of t.comments) {
+          if (c.user && !isAutomatedReviewer(c.user) && c.user !== currentUser) {
+            humanCommenters.add(c.user)
+          }
+        }
+      }
+
       const latestByUser = {}
       for (const r of pr.reviews.nodes) {
         const user = r.author?.login
@@ -130,6 +144,9 @@ case "$CMD" in
         const prev = latestByUser[user]
         if (!prev || new Date(r.submittedAt) > new Date(prev.submittedAt)) {
           latestByUser[user] = r
+        }
+        if (!isAutomatedReviewer(user) && user !== currentUser) {
+          humanCommenters.add(user)
         }
       }
       const reviewBodies = Object.entries(latestByUser)
@@ -143,6 +160,9 @@ case "$CMD" in
         const user = c.author?.login
         if (!user || user === prAuthor || isBot(user)) return false
         if ((c.body || '').includes('<!-- addressed:')) return false
+        if (!isAutomatedReviewer(user) && user !== currentUser) {
+          humanCommenters.add(user)
+        }
         return !addressedIds.has(c.databaseId)
       }).map(c => ({
         id: c.databaseId, user: c.author?.login,
@@ -150,7 +170,9 @@ case "$CMD" in
       }))
 
       console.log(JSON.stringify({
-        prAuthor, headRef: pr.headRefName, baseRef: pr.baseRefName,
+        prAuthor, currentUser, headRef: pr.headRefName, baseRef: pr.baseRefName,
+        hasHumanReviewers: humanCommenters.size > 0,
+        humanReviewers: Array.from(humanCommenters),
         threads, reviewBodies, topLevel
       }, null, 2))
     "

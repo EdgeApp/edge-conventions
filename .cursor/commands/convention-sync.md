@@ -1,25 +1,30 @@
-<goal>Sync cursor files between `~/.cursor/` and the `edge-conventions` repo, commit, push, and optionally update the PR description.</goal>
+<goal>Sync cursor files between `~/.cursor/` and the `edge-conventions` repo, commit, push, and update PR description from README.</goal>
 
 <rules>
 <rule id="use-companion-script">Use `~/.cursor/commands/convention-sync.sh` for diffing and syncing. Do NOT manually diff or copy files.</rule>
 <rule id="dry-run-first">Always run without `--stage` first to show the summary. Only stage/commit after user confirms.</rule>
 <rule id="no-script-bypass">If the script fails, report the error and STOP.</rule>
+<rule id="readme-is-source">`.cursor/README.md` is the source of truth for documentation. The script mirrors it to the PR description automatically.</rule>
 </rules>
 
-<step id="1" name="Detect changes">
+<step id="1" name="Detect changes and PR status">
 Determine the repo directory — default to the current working directory if it contains a `.cursor/` folder, otherwise use the `edge-conventions` checkout.
 
-Run the script in dry-run mode (no flags):
-
-```bash
-~/.cursor/commands/convention-sync.sh <repo-dir>
-```
+Run **in parallel**:
+1. Sync script in dry-run mode:
+   ```bash
+   ~/.cursor/commands/convention-sync.sh <repo-dir>
+   ```
+2. Check for open PR:
+   ```bash
+   cd <repo-dir> && gh pr view --json number,url --jq '{number: .number, url: .url}' 2>/dev/null || echo '{}'
+   ```
 
 Parse the JSON output. If `total` is 0, report "Everything is in sync" and stop.
 </step>
 
 <step id="2" name="Present summary">
-Show the user a concise summary:
+Show the user a concise summary including PR update status:
 
 ```
 Sync summary (user → repo):
@@ -27,13 +32,15 @@ Sync summary (user → repo):
   Modified: file3, file4
   Deleted: file5
 
+PR #N: Will update description from README.md (or "No open PR")
+
 Commit and push? [y/N]
 ```
 
 If the user provided a commit message in their prompt, skip the confirmation and proceed.
 </step>
 
-<step id="3" name="Stage, commit, push">
+<step id="3" name="Stage, commit, push, update PR">
 Run the script with `--commit`:
 
 ```bash
@@ -45,24 +52,16 @@ Then push:
 ```bash
 cd <repo-dir> && git push origin HEAD
 ```
-</step>
 
-<step id="4" name="Update PR description (if needed)">
-Only if new commands, scripts, or rules were added (check `new` array):
+If an open PR exists, update the PR description from README:
 
-1. Detect the open PR for the current branch:
-   ```bash
-   gh pr view --json number,url --jq '.number' 2>/dev/null
-   ```
-   If no PR exists, skip this step.
-
-2. Ask:
-   > "New files added: file1, file2. Update PR #N description? [y/N]"
-
-3. If confirmed, read the current PR body via `gh pr view --json body --jq '.body'`, add entries for new files in the appropriate tables, and update via `gh pr edit --body-file /tmp/pr-body.md`.
+```bash
+cd <repo-dir> && gh pr edit --body-file .cursor/README.md
+```
 </step>
 
 <edge-cases>
 <case name="Reverse sync (repo → user)">If the user says "pull from repo" or "update my local", run with `--repo-to-user --stage` instead. No git operations needed.</case>
 <case name="Selective sync">If the user says to exclude specific files, note them but still run the full diff. The script syncs everything — manually skip files by not confirming, or remove them from staging with `git reset HEAD .cursor/<file>` before committing.</case>
+<case name="No README">If `.cursor/README.md` doesn't exist, skip PR description update and warn the user.</case>
 </edge-cases>

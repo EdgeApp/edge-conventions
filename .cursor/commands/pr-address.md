@@ -21,10 +21,14 @@ Always fetch live from GitHub. The script returns all unresolved feedback — no
 
 If the script exits code 2 with `PROMPT_GH_AUTH`, prompt: "`gh` CLI is not authenticated. Please run: `gh auth login`"
 
-The output contains three categories:
-- **threads**: Unresolved inline review threads (with `threadId`, `path`, `line`, comment details)
-- **reviewBodies**: Latest review body per non-author/non-bot reviewer (with `reviewId`, `state`, `body`)
-- **topLevel**: Non-author/non-bot top-level comments not yet marked addressed
+The output contains:
+- **prAuthor**: The PR author's GitHub username
+- **currentUser**: Your GitHub username (the authenticated `gh` user)
+- **hasHumanReviewers**: `true` if any external human reviewer (not `currentUser`, not bots) has commented — used for autosquash decision
+- **humanReviewers**: List of external human reviewer usernames
+- **threads**: All unresolved inline review threads (includes comments from `currentUser` for context)
+- **reviewBodies**: Latest review body per non-author reviewer (excludes `prAuthor` and bots)
+- **topLevel**: Top-level comments (excludes `prAuthor` and bots)
 </step>
 
 <step id="2" name="Process all unresolved feedback">
@@ -37,6 +41,7 @@ Address every item returned by `fetch`. Group inline threads by file. If the use
    ```bash
    ~/.cursor/commands/lint-commit.sh -m "fixup! {targetHeadline}" [files...]
    ```
+   The script auto-reorders fixups next to their targets (but doesn't squash). Step 4 handles actual squashing when appropriate.
 </sub-step>
 
 <sub-step name="Determine fixup target">
@@ -99,9 +104,19 @@ The script appends `<!-- addressed:review:ID -->` or `<!-- addressed:comment:ID 
 </sub-step>
 </step>
 
-<step id="4" name="Autosquash (automated reviewers only)">
-If ALL review comments came from automated reviewers (`chatgpt-codex-connector` or `cursor`), autosquash fixup commits:
+<step id="4" name="Autosquash (only when no external human reviewers)">
+Only autosquash if `hasHumanReviewers` is `false`. This means no external human reviewer (someone other than `currentUser`) has commented.
 
+Autosquash is **allowed** when only:
+- Automated reviewers (`cursor`, `chatgpt-codex-connector`, or other bots) commented, OR
+- `currentUser` commented (your own notes/action items)
+
+Autosquash is **blocked** when:
+- Any external human reviewer has commented — they are actively reviewing and need to see the fixup commits
+
+If `hasHumanReviewers` is `true`, **do NOT autosquash**. Leave fixup commits visible for human reviewers to verify before squashing on merge.
+
+When autosquashing is allowed:
 ```bash
 ~/.cursor/commands/pr-address.sh autosquash
 ```
@@ -130,6 +145,6 @@ Propose modifications to `~/.cursor/rules/typescript-standards.mdc` to prevent s
 <edge-cases>
 <case name="No gh auth">Script exits code 2 with `PROMPT_GH_AUTH`. Prompt user to run `gh auth login` and STOP.</case>
 <case name="No unresolved feedback">Report "No unresolved comments on this PR" and STOP.</case>
-<case name="Human reviewer comments">Do NOT autosquash. Leave fixup commits for the reviewer to verify, then squash on merge.</case>
+<case name="External human reviewer comments">Do NOT autosquash when `hasHumanReviewers` is true. Leave fixup commits for the external reviewer to verify, then squash on merge.</case>
 <case name="Comment already addressed in code">If the current code already handles the feedback (e.g., from a previous fixup), still reply explaining this and resolve/mark the comment. Do not leave it unresolved.</case>
 </edge-cases>
