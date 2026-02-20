@@ -25,14 +25,15 @@ cmd_start() {
   local pr="${1:?PR number required}"
 
   local pr_json
-  pr_json=$(gh pr view "$pr" --json number,headRefOid,headRepository,headRepositoryOwner,url)
+  pr_json=$(gh pr view "$pr" --json number,headRefOid,url)
 
   local number head_sha owner repo url
   number=$(echo "$pr_json" | jq -r '.number')
   head_sha=$(echo "$pr_json" | jq -r '.headRefOid')
-  owner=$(echo "$pr_json" | jq -r '.headRepositoryOwner.login')
-  repo=$(echo "$pr_json" | jq -r '.headRepository.name')
   url=$(echo "$pr_json" | jq -r '.url')
+  # Parse owner and repo from URL which always points to the base repository
+  owner=$(echo "$url" | sed -E 's|https://github.com/([^/]+)/([^/]+)/pull/[0-9]+.*|\1|')
+  repo=$(echo "$url" | sed -E 's|https://github.com/([^/]+)/([^/]+)/pull/[0-9]+.*|\2|')
 
   local pending
   pending=$(gh api graphql -f query='
