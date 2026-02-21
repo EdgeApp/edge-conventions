@@ -23,14 +23,26 @@ If the script exits code 2 with `PROMPT_GH_AUTH`, prompt: "`gh` CLI is not authe
 Save the output JSON — it contains `number`, `title`, `url`, `headRef`, `baseRef`, `headSha`, `reviews[]`, and `files[]` (with patches).
 </step>
 
-<step id="2" name="Load review standards">
+<step id="2" name="Checkout PR branch">
+Checkout the PR branch to ensure file reads reflect the PR's code, not the current local branch:
+
+```bash
+git fetch origin <headRef> && git checkout <headRef>
+```
+
+Replace `<headRef>` with the branch name from the context output (e.g., `william/fix-eth-sync`).
+
+If checkout fails due to uncommitted changes, prompt the user to stash or commit before proceeding.
+</step>
+
+<step id="3" name="Load review standards">
 Read these files in parallel (skip any already present in `cursor_rules_context`):
 
 - `~/.cursor/rules/review-standards.mdc`
 - `~/.cursor/rules/typescript-standards.mdc`
 </step>
 
-<step id="3" name="Review changed files">
+<step id="4" name="Review changed files">
 For each changed file in the context output:
 
 1. Read the full file to understand surrounding context (batch reads in parallel)
@@ -50,7 +62,7 @@ Categorize findings as:
 Cross-reference findings against `reviews[]` from the context output. Omit any findings already raised by another reviewer.
 </step>
 
-<step id="4" name="Submit review">
+<step id="5" name="Submit review">
 If there are findings to report, prepare a review JSON and submit via the companion script:
 
 ```bash
@@ -87,7 +99,7 @@ Use `"REQUEST_CHANGES"` for critical issues, `"COMMENT"` for suggestions only, `
 </sub-step>
 </step>
 
-<step id="5" name="Summarize">
+<step id="6" name="Summarize">
 After submitting (or if no findings), provide a summary in the chat response:
 - Number of files reviewed
 - Findings by category (critical, warning, suggestion)

@@ -124,11 +124,12 @@ if [[ -z "$IMPLEMENTOR_GID" ]]; then
 fi
 
 # --- Step 3: Set Implementor if override was provided ---
+# People fields use array format: {"field_gid": ["user_gid"]}
 if [[ -n "$IMPLEMENTOR_OVERRIDE" ]]; then
   curl -s -X PUT "https://app.asana.com/api/1.0/tasks/$TASK_GID" \
     -H "Authorization: Bearer $ASANA_TOKEN" \
     -H "Content-Type: application/json" \
-    -d "{\"data\":{\"custom_fields\":{\"$IMPLEMENTOR_FIELD\":{\"people_value\":[\"$IMPLEMENTOR_OVERRIDE\"]}}}}" > /dev/null 2>&1 || true
+    -d "{\"data\":{\"custom_fields\":{\"$IMPLEMENTOR_FIELD\":[\"$IMPLEMENTOR_OVERRIDE\"]}}}" > /dev/null 2>&1 || true
   echo ">> Implementor: set"
 fi
 

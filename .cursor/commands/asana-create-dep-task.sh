@@ -16,7 +16,7 @@
 #   TASK_URL: <url>
 #   CREATED: true|false (false if task already existed)
 #   ASSIGNED_TO: <user_gid>
-#   FIELDS_SET: priority=<val>, status=<val>
+#   FIELDS_SET: priority=<val>, status=<val>, reviewer=<name>, implementor=<name>
 #   DEPENDENCY_SET: <new_gid> blocks <parent_gid>
 #
 # Exit codes: 0 = success, 1 = error
@@ -52,9 +52,12 @@ AUTH="Authorization: Bearer $ASANA_TOKEN"
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
+# Auto-resolve current user GID (used for assignee and implementor)
+CURRENT_USER_GID=$("$SCRIPT_DIR/asana-whoami.sh" 2>/dev/null || true)
+
 # Auto-resolve assignee to current user if not provided
 if [[ -z "$ASSIGNEE_GID" ]]; then
-  ASSIGNEE_GID=$("$SCRIPT_DIR/asana-whoami.sh" 2>/dev/null || true)
+  ASSIGNEE_GID="$CURRENT_USER_GID"
 fi
 
 # Phase 1: Check if a dependency with a matching name already exists
@@ -78,10 +81,10 @@ if [[ -n "$existing" ]]; then
 fi
 
 # Phase 2: Get parent task's project and custom fields to copy
-parent_info=$(curl -s "$API/tasks/$PARENT_GID?opt_fields=workspace.gid,memberships.project.gid,memberships.project.name,custom_fields.gid,custom_fields.enum_value.gid,custom_fields.enum_value.name" \
+parent_info=$(curl -s "$API/tasks/$PARENT_GID?opt_fields=workspace.gid,memberships.project.gid,memberships.project.name,custom_fields.gid,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.people_value.gid,custom_fields.people_value.name" \
   -H "$AUTH")
 
-read -r WORKSPACE_GID PROJECT_GIDS PRIORITY_GID PRIORITY_VAL STATUS_GID STATUS_VAL < <(echo "$parent_info" | python3 -c "
+read -r WORKSPACE_GID PROJECT_GIDS PRIORITY_INFO STATUS_INFO REVIEWER_INFO < <(echo "$parent_info" | python3 -c "
 import sys, json, re
 data = json.load(sys.stdin)['data']
 ws = data.get('workspace', {}).get('gid', '')
@@ -96,51 +99,70 @@ if not projects and data.get('memberships'):
     projects.append(data['memberships'][0]['project']['gid'])
 proj_str = ','.join(projects)
 
-# Custom fields to copy
-FIELD_MAP = {
+# Field GIDs
+ENUM_FIELDS = {
     '795866930204488': 'priority',
     '1190660107346181': 'status',
 }
-fields = {}
+PEOPLE_FIELDS = {
+    '1203334388004673': 'reviewer',
+}
+
+enum_results = {}
+people_results = {}
+
 for f in data.get('custom_fields', []):
-    label = FIELD_MAP.get(f['gid'])
-    if label and f.get('enum_value'):
-        fields[label + '_gid'] = f['gid']
-        fields[label + '_val'] = f['enum_value']['gid']
-        fields[label + '_name'] = f['enum_value']['name']
+    fgid = f['gid']
+    if fgid in ENUM_FIELDS and f.get('enum_value'):
+        label = ENUM_FIELDS[fgid]
+        enum_results[label] = (fgid, f['enum_value']['gid'], f['enum_value'].get('name', ''))
+    if fgid in PEOPLE_FIELDS:
+        label = PEOPLE_FIELDS[fgid]
+        pv = f.get('people_value', [])
+        if pv:
+            people_results[label] = (fgid, pv[0]['gid'], pv[0].get('name', ''))
 
-pri_gid = fields.get('priority_gid', '')
-pri_val = fields.get('priority_val', '')
-sta_gid = fields.get('status_gid', '')
-sta_val = fields.get('status_val', '')
+def fmt_enum(key):
+    if key in enum_results:
+        return ':'.join(enum_results[key])
+    return '::'
 
-print(f'{ws} {proj_str} {pri_gid}:{pri_val}:{fields.get(\"priority_name\",\"\")} {sta_gid}:{sta_val}:{fields.get(\"status_name\",\"\")}')
+def fmt_people(key):
+    if key in people_results:
+        return ':'.join(people_results[key])
+    return '::'
+
+print(f\"{ws} {proj_str} {fmt_enum('priority')} {fmt_enum('status')} {fmt_people('reviewer')}\")
 ")
 
-PRIORITY_FIELD=$(echo "$PRIORITY_VAL" | cut -d: -f1)
-PRIORITY_ENUM=$(echo "$PRIORITY_VAL" | cut -d: -f2)
-PRIORITY_NAME=$(echo "$PRIORITY_VAL" | cut -d: -f3)
-STATUS_FIELD=$(echo "$STATUS_VAL" | cut -d: -f1)
-STATUS_ENUM=$(echo "$STATUS_VAL" | cut -d: -f2)
-STATUS_NAME=$(echo "$STATUS_VAL" | cut -d: -f3)
+PRIORITY_FIELD=$(echo "$PRIORITY_INFO" | cut -d: -f1)
+PRIORITY_ENUM=$(echo "$PRIORITY_INFO" | cut -d: -f2)
+PRIORITY_NAME=$(echo "$PRIORITY_INFO" | cut -d: -f3)
+STATUS_FIELD=$(echo "$STATUS_INFO" | cut -d: -f1)
+STATUS_ENUM=$(echo "$STATUS_INFO" | cut -d: -f2)
+STATUS_NAME=$(echo "$STATUS_INFO" | cut -d: -f3)
+REVIEWER_FIELD=$(echo "$REVIEWER_INFO" | cut -d: -f1)
+REVIEWER_GID=$(echo "$REVIEWER_INFO" | cut -d: -f2)
+REVIEWER_NAME=$(echo "$REVIEWER_INFO" | cut -d: -f3)
+
+# Auto-resolve implementor to current user
+IMPLEMENTOR_FIELD="1203334386796983"
+IMPLEMENTOR_GID="$CURRENT_USER_GID"
+IMPLEMENTOR_NAME="current user"
 
 # Phase 3: Create the task
 NOTES_JSON=$(python3 -c "import json; print(json.dumps('''$TASK_NOTES'''))")
 
-custom_fields_json="{}"
-if [[ -n "$PRIORITY_FIELD" && -n "$PRIORITY_ENUM" ]]; then
-  custom_fields_json=$(python3 -c "
+# Build enum custom fields for task creation (people fields set separately after)
+custom_fields_json=$(python3 -c "
 import json
 cf = {}
-pf = '$PRIORITY_FIELD'
-pe = '$PRIORITY_ENUM'
-sf = '$STATUS_FIELD'
-se = '$STATUS_ENUM'
+pf, pe = '$PRIORITY_FIELD', '$PRIORITY_ENUM'
+sf, se = '$STATUS_FIELD', '$STATUS_ENUM'
 if pf and pe: cf[pf] = pe
 if sf and se: cf[sf] = se
 print(json.dumps(cf))
 ")
-fi
 
 # Build projects list from comma-separated GIDs
 IFS=',' read -ra PROJECT_ARR <<< "$PROJECT_GIDS"
@@ -180,6 +202,28 @@ if [[ -z "$NEW_GID" || "$NEW_GID" == "ERROR"* ]]; then
   exit 1
 fi
 
+# Phase 3b: Set people fields (reviewer, implementor) via separate PUT
+# People fields use array format: {"field_gid": ["user_gid"]}
+people_fields_json=$(python3 -c "
+import json
+cf = {}
+rf, rg = '$REVIEWER_FIELD', '$REVIEWER_GID'
+imf, img = '$IMPLEMENTOR_FIELD', '$IMPLEMENTOR_GID'
+if rf and rg: cf[rf] = [rg]
+if imf and img: cf[imf] = [img]
+if cf:
+    print(json.dumps({'data': {'custom_fields': cf}}))
+else:
+    print('')
+")
+
+if [[ -n "$people_fields_json" ]]; then
+  curl -s -X PUT "$API/tasks/$NEW_GID" \
+    -H "$AUTH" \
+    -H "Content-Type: application/json" \
+    -d "$people_fields_json" > /dev/null 2>&1 || true
+fi
+
 FIRST_PROJECT=$(echo "$PROJECT_GIDS" | cut -d, -f1)
 echo "TASK_GID: $NEW_GID"
 echo "TASK_URL: https://app.asana.com/0/$FIRST_PROJECT/$NEW_GID"
@@ -194,9 +238,9 @@ curl -s -X POST "$API/tasks/$PARENT_GID/addDependencies" \
 
 echo "DEPENDENCY_SET: $NEW_GID blocks $PARENT_GID"
 
-if [[ -n "$PRIORITY_NAME" || -n "$STATUS_NAME" ]]; then
-  fields_msg=""
-  [[ -n "$PRIORITY_NAME" ]] && fields_msg="priority=$PRIORITY_NAME"
-  [[ -n "$STATUS_NAME" ]] && fields_msg="${fields_msg:+$fields_msg, }status=$STATUS_NAME"
-  echo "FIELDS_SET: $fields_msg"
-fi
+fields_msg=""
+[[ -n "$PRIORITY_NAME" ]] && fields_msg="priority=$PRIORITY_NAME"
+[[ -n "$STATUS_NAME" ]] && fields_msg="${fields_msg:+$fields_msg, }status=$STATUS_NAME"
+[[ -n "$REVIEWER_NAME" ]] && fields_msg="${fields_msg:+$fields_msg, }reviewer=$REVIEWER_NAME"
+[[ -n "$IMPLEMENTOR_GID" ]] && fields_msg="${fields_msg:+$fields_msg, }implementor=$IMPLEMENTOR_NAME"
+[[ -n "$fields_msg" ]] && echo "FIELDS_SET: $fields_msg"

@@ -3,13 +3,20 @@ description: When a workflow issue is identified in a command or skill, fix the 
 alwaysApply: true
 ---
 
-# Fix Workflow Definitions First
+<goal>Ensure workflow definitions are fixed at the source before any workarounds are applied.</goal>
 
-When a misbehavior is traced to a command (`.cursor/commands/*.md`) or skill (`.cursor/skills/*/SKILL.md`):
+<rules description="Non-negotiable constraints.">
+<rule id="absolute-priority">Fixing the command/skill takes **absolute priority** over all other actions — including workarounds, continuing the original task, or applying temporary fixes.</rule>
+<rule id="no-workarounds-first">Do NOT apply workarounds or manual fixes before proposing the command/skill update. The correct sequence is: identify gap → propose fix → get approval → apply fix → then resume original task.</rule>
+<rule id="use-author">Always use `/author` to fix commands and skills. It contains current best practices and the mandatory revision checklist.</rule>
+</rules>
 
-1. **Stop** fixing the downstream symptom.
-2. **Identify the root cause** in the command/skill definition.
-3. **Fix the command/skill first** using `/author` (`~/.cursor/skills/author/SKILL.md`), which contains the current best practices and mandatory revision checklist for command/skill authoring.
-4. **Then** fix the immediate misbehavior if still needed.
+<sequence name="When a workflow gap is discovered">
+1. **Stop immediately** — do not continue the current task or apply any workaround.
+2. **Identify the root cause** in the command (`.cursor/commands/*.md`) or skill (`.cursor/skills/*/SKILL.md`) definition.
+3. **Propose the fix** to the user and wait for approval before proceeding.
+4. **Fix the command/skill** using `/author` after approval.
+5. **Resume the original task** only after the command/skill is updated.
+</sequence>
 
-This applies to all workflow issues — missed steps, incorrect output, wrong tool usage, formatting problems, etc. The command/skill is the source of truth; patching around it creates drift.
+<scope>This applies to all workflow issues — missed steps, incorrect output, wrong tool usage, formatting problems, etc. The command/skill is the source of truth; patching around it creates drift.</scope>
