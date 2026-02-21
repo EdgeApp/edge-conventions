@@ -20,6 +20,7 @@
 <rule id="unexpected-exit">Unexpected exit codes → STOP immediately. If any script returns an exit code not documented in this file, STOP and report to user. Do NOT attempt to interpret, retry, or work around unexpected errors.</rule>
 <rule id="sequential-rebase">Sequential merging requires rebase. Each subsequent PR MUST be rebased onto the updated base branch after the previous merge.</rule>
 <rule id="publish-gating">Don't publish if outstanding PRs remain. Only offer to publish a repo when ALL approved PRs for that repo are merged. If any were skipped or held back, do NOT publish that repo.</rule>
+<rule id="npm-publish-gate">Step 7 CANNOT begin until the user explicitly confirms npm publish succeeded. `npm publish` requires interactive 2FA — the agent cannot run it. Do NOT infer publish completion from git push or tagging. STOP and WAIT for user confirmation.</rule>
 <rule id="asana-last">Asana updates are LAST. Do NOT update Asana tasks until ALL merges, publishes, and GUI dependency upgrades are complete. Only update status for PRs that are fully landed (merged, and if non-GUI: published + GUI deps updated).</rule>
 </rules>
 
@@ -164,6 +165,8 @@ After script completes:
 1. Show version bump details to user
 2. If confirmed, push master and tag: `git push origin master && git push origin v<version>`
 3. Prompt user to run `npm publish` in a real terminal (requires interactive 2FA)
+
+**STOP HERE. Do NOT proceed to step 7 until the user confirms npm publish succeeded.**
 </step>
 
 <step id="7" name="Update GUI Dependencies">
