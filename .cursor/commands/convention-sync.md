@@ -31,11 +31,14 @@ Sync summary (user → repo):
   New: file1, file2
   Modified: file3, file4
   Deleted: file5
+  Ignored: file6, file7 (via .syncignore)
 
 PR #N: Will update description from README.md (or "No open PR")
 
 Commit and push? [y/N]
 ```
+
+If `ignored` array is empty, omit the Ignored line.
 
 If the user provided a commit message in their prompt, skip the confirmation and proceed.
 </step>
@@ -62,6 +65,6 @@ cd <repo-dir> && gh pr edit --body-file .cursor/README.md
 
 <edge-cases>
 <case name="Reverse sync (repo → user)">If the user says "pull from repo" or "update my local", run with `--repo-to-user --stage` instead. No git operations needed.</case>
-<case name="Selective sync">If the user says to exclude specific files, note them but still run the full diff. The script syncs everything — manually skip files by not confirming, or remove them from staging with `git reset HEAD .cursor/<file>` before committing.</case>
+<case name="Selective sync">To permanently exclude files, add glob patterns to `~/.cursor/.syncignore` (one per line, `#` comments). The script skips matching entries and reports them in the `ignored` array. To exclude ad-hoc, remove files from staging with `git reset HEAD .cursor/<file>` before committing.</case>
 <case name="No README">If `.cursor/README.md` doesn't exist, skip PR description update and warn the user.</case>
 </edge-cases>

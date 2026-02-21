@@ -37,19 +37,43 @@ fi
 USER_DIR="$HOME/.cursor"
 REPO_CURSOR="$REPO_DIR/.cursor"
 DIRS="commands rules skills"
+SYNCIGNORE="$USER_DIR/.syncignore"
+
+# Load ignore patterns from .syncignore (one glob per line, # comments, blank lines skipped)
+ignore_patterns=()
+if [[ -f "$SYNCIGNORE" ]]; then
+  while IFS= read -r line; do
+    line="${line%%#*}"       # strip comments
+    line="${line%"${line##*[![:space:]]}"}"  # strip trailing whitespace
+    [[ -z "$line" ]] && continue
+    ignore_patterns+=("$line")
+  done < "$SYNCIGNORE"
+fi
+
+is_ignored() {
+  local entry="$1"
+  for pattern in "${ignore_patterns[@]+"${ignore_patterns[@]}"}"; do
+    # shellcheck disable=SC2254
+    if [[ "$entry" == $pattern ]]; then
+      return 0
+    fi
+  done
+  return 1
+}
 
 new_json="[]"
 mod_json="[]"
 del_json="[]"
+ignored_json="[]"
 
 # Check README.md separately (single file, not a directory)
-if [[ -f "$USER_DIR/README.md" ]]; then
+if [[ -f "$USER_DIR/README.md" ]] && ! is_ignored "README.md"; then
   if [[ ! -f "$REPO_CURSOR/README.md" ]]; then
     new_json=$(echo "$new_json" | jq '. + ["README.md"]')
   elif ! diff -q "$USER_DIR/README.md" "$REPO_CURSOR/README.md" >/dev/null 2>&1; then
     mod_json=$(echo "$mod_json" | jq '. + ["README.md"]')
   fi
-elif [[ -f "$REPO_CURSOR/README.md" ]]; then
+elif [[ -f "$REPO_CURSOR/README.md" ]] && ! is_ignored "README.md"; then
   del_json=$(echo "$del_json" | jq '. + ["README.md"]')
 fi
 
@@ -61,8 +85,12 @@ for dir in $DIRS; do
 
   while IFS= read -r rel; do
     [[ -z "$rel" ]] && continue
-    repo_file="$repo_path/$rel"
     entry="$dir/$rel"
+    if is_ignored "$entry"; then
+      ignored_json=$(echo "$ignored_json" | jq --arg f "$entry" '. + [$f]')
+      continue
+    fi
+    repo_file="$repo_path/$rel"
     if [[ ! -f "$repo_file" ]]; then
       new_json=$(echo "$new_json" | jq --arg f "$entry" '. + [$f]')
     elif ! diff -q "$user_path/$rel" "$repo_file" >/dev/null 2>&1; then
@@ -73,8 +101,9 @@ for dir in $DIRS; do
   if [[ -d "$repo_path" ]]; then
     while IFS= read -r rel; do
       [[ -z "$rel" ]] && continue
-      user_file="$user_path/$rel"
       entry="$dir/$rel"
+      is_ignored "$entry" && continue
+      user_file="$user_path/$rel"
       if [[ ! -f "$user_file" ]]; then
         del_json=$(echo "$del_json" | jq --arg f "$entry" '. + [$f]')
       fi
@@ -141,7 +170,8 @@ jq -n \
   --argjson new "$new_json" \
   --argjson modified "$mod_json" \
   --argjson deleted "$del_json" \
+  --argjson ignored "$ignored_json" \
   --argjson total "$total" \
   --arg staged "$DO_STAGE" \
   --arg committed "$DO_COMMIT" \
-  '{total: $total, new: $new, modified: $modified, deleted: $deleted, staged: ($staged == "true"), committed: ($committed == "true")}'
+  '{total: $total, new: $new, modified: $modified, deleted: $deleted, ignored: $ignored, staged: ($staged == "true"), committed: ($committed == "true")}'
