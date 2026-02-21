@@ -153,6 +153,7 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 | Script | What it does |
 |--------|-------------|
 | [`lint-commit.sh`](.cursor/commands/lint-commit.sh) | ESLint `--fix` before commit, auto-runs `update-eslint-warnings` when available |
+| [`lint-warnings.sh`](.cursor/commands/lint-warnings.sh) | Update `eslint-warnings.mdc` knowledge base from current lint output |
 | [`upgrade-dep.sh`](.cursor/commands/upgrade-dep.sh) | Upgrade a dependency in the GUI repo |
 
 ---
@@ -182,7 +183,7 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 | [`review-standards.mdc`](.cursor/rules/review-standards.mdc) | Loaded by `/pr-review` command | ~50 review-specific diagnostic rules extracted from PR history |
 | [`load-standards-by-filetype.mdc`](.cursor/rules/load-standards-by-filetype.mdc) | Always applied | Auto-loads language-specific standards before editing |
 | [`fix-workflow-first.mdc`](.cursor/rules/fix-workflow-first.mdc) | Always applied | Fix command/skill definitions before patching downstream symptoms |
-| [`answer-questions-first.mdc`](.cursor/rules/answer-questions-first.mdc) | Always applied | Detect `?` in user messages → answer before acting |
+| [`answer-questions-first.mdc`](.cursor/rules/answer-questions-first.mdc) | Always applied | Detect `?` in user messages → answer before acting; loads active command context to evaluate workflow gaps |
 | [`no-format-lint.mdc`](.cursor/rules/no-format-lint.mdc) | Always applied | Don't manually fix formatting — auto-format on agent finish handles it |
 | [`eslint-warnings.mdc`](.cursor/rules/eslint-warnings.mdc) | `.ts`/`.tsx` files | ESLint warning handling patterns |
 
@@ -194,7 +195,7 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 
 | Skill | Purpose |
 |-------|---------|
-| [`author/SKILL.md`](.cursor/skills/author/SKILL.md) | Meta-skill for creating/maintaining commands and skills. Enforces XML format, `scripts-over-reasoning`, `gh-cli-over-curl`, `minimize-context`, companion script naming conventions, and `small-model-conventions` for commands targeting faster models. |
+| [`author/SKILL.md`](.cursor/skills/author/SKILL.md) | Meta-skill for creating/maintaining commands and skills. Enforces XML format, `scripts-over-reasoning`, `gh-cli-over-curl`, `minimize-context`, companion script naming conventions, `small-model-conventions`, and behavioral dependency checks during revision. |
 
 ---
 

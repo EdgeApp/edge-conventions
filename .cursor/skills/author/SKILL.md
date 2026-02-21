@@ -92,13 +92,21 @@ When revising an existing command, **every item below is mandatory** — not a s
 
 1. Read the full file before making changes
 2. Check for duplicated logic across other commands — consolidate if found
-3. Verify step ordering matches the agent's decision flow
-4. Ensure examples are brief and generic (no real repo names, PR numbers, or user data)
-5. Check that escape hatches exist for ambiguous cases
-6. Confirm companion scripts match the `.md` expectations
-7. Convert markdown-structured commands to XML format (this is the most commonly skipped item — `##` headers and bullet lists must become `<goal>`, `<rules>`, `<step>` tags)
-8. Apply all current authoring principles (rules-first, scripts-over-reasoning, batch-tool-calls, etc.) even if the original command predates them
-9. If the command may run on smaller/faster models, apply `<small-model-conventions>` — especially `file-over-args`, `inline-guardrails`, and `verbatim-bash`
+3. **Check behavioral dependencies**: Search for other commands, skills, and rules that perform similar operations or share domain overlap with the one being edited. If command A has a step that is a lightweight version of command B's core behavior (e.g., `/pr-land` addressing comments vs `/pr-address`), verify that A's step is consistent with B's rules — missing rules in A are likely bugs.
+   - Extract domain-specific verbs and nouns from the step being edited (e.g., a step about handling PR comments yields: `comment`, `reply`, `resolve`, `address`, `fixup`, `thread`)
+   - Search each term across commands, skills, and rules:
+   ```bash
+   rg -l "<term>" ~/.cursor/commands/*.md ~/.cursor/skills/*/SKILL.md ~/.cursor/rules/*.mdc
+   ```
+   - Read any hits that share domain overlap and check for consistency
+   - If overlap is found, evaluate whether to consolidate per the `dry` principle: can A reference B's rules or a shared file instead of reimplementing? Propose consolidation to the user when the shared logic is non-trivial.
+4. Verify step ordering matches the agent's decision flow
+5. Ensure examples are brief and generic (no real repo names, PR numbers, or user data)
+6. Check that escape hatches exist for ambiguous cases
+7. Confirm companion scripts match the `.md` expectations
+8. Convert markdown-structured commands to XML format (this is the most commonly skipped item — `##` headers and bullet lists must become `<goal>`, `<rules>`, `<step>` tags)
+9. Apply all current authoring principles (rules-first, scripts-over-reasoning, batch-tool-calls, etc.) even if the original command predates them
+10. If the command may run on smaller/faster models, apply `<small-model-conventions>` — especially `file-over-args`, `inline-guardrails`, and `verbatim-bash`
 </revision-checklist>
 
 <companion-scripts>

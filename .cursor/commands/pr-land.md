@@ -77,9 +77,10 @@ Items previously marked with `<!-- addressed:review:ID -->` or `<!-- addressed:c
    1. Read the comment and understand the requested change
    2. Make the fix as a fixup commit: `~/.cursor/commands/lint-commit.sh --fixup <hash> [files...]`
    3. Push the fixup to the branch
-   4. **Remove this PR from the merge set** — it needs re-review after the fixup
-   5. Continue with remaining PRs that have no outstanding comments
-   6. Report addressed PRs to the user at the end of the workflow
+   4. Reply on the PR thread explaining what was fixed (1 sentence, factual). Use `gh pr comment <number> --repo EdgeApp/<repo> --body "..."` for top-level comments, or reply to the specific thread if the feedback was inline.
+   5. **Remove this PR from the merge set** — it needs re-review after the fixup
+   6. Continue with remaining PRs that have no outstanding comments
+   7. Report addressed PRs to the user at the end of the workflow
 
 **Do NOT block the rest of the flow** for PRs with comments.
 </sub-step>

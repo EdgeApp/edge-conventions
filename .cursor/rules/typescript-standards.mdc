@@ -209,4 +209,20 @@ const getStyles = cacheStyles((theme: Theme) => ({
 Note: This is an architectural change. If the file has many `styled()` usages, flag to user rather than refactoring inline.
 </pattern>
 
+<pattern id="cleaner-error-matching" rule="@typescript-eslint/use-unknown-in-catch-callback-variable">When catching unknown errors that need property inspection, use `cleaners` instead of type assertions.
+❌ `const err = e as { code?: string; message?: string }`
+✅ Define a cleaner and use `asMaybe`:
+```ts
+const asFooError = asObject({
+  code: asValue(FOO_CODE),
+  message: asOptional(asString, '')
+})
+const fooError = asMaybe(asFooError)(e)
+if (fooError != null) { ... }
+```
+For generic error message extraction:
+❌ `err.message ?? ''` (unsafe on `unknown`)
+✅ `e instanceof Error ? e.message : String(e)`
+</pattern>
+
 </lint-fix-patterns>
