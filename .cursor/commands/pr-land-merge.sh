@@ -37,6 +37,29 @@ const {
   ghApi,
 } = require(path.join(__dirname, "edge-repo.js"));
 
+function sanitizeBranchLabel(branch) {
+  return branch.replace(/[^a-z0-9]/gi, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+function describeBranchState(repoDir, branch) {
+  const notes = [];
+  const local = runGit(["rev-parse", branch], repoDir, { allowFailure: true });
+  notes.push(local.success ? `Local commit (${branch}): ${local.stdout}` : `Local branch "${branch}" missing`);
+
+  const remote = runGit(["rev-parse", `origin/${branch}`], repoDir, { allowFailure: true });
+  notes.push(remote.success ? `Remote commit (origin/${branch}): ${remote.stdout}` : `Remote branch origin/${branch} missing`);
+
+  const status = runGit(["status", "-sb"], repoDir, { allowFailure: true });
+  if (status.stdout) {
+    notes.push(`Status: ${status.stdout.trim()}`);
+  }
+  return notes.join("\n");
+}
+
+function fetchBranchForPush(repoDir, branch) {
+  runGit(["fetch", "origin", branch], repoDir, { allowFailure: true });
+}
+
 // Verify gh auth
 const authCheck = spawnSync("gh", ["auth", "status"], { encoding: "utf8" });
 if (authCheck.status !== 0) {
@@ -272,7 +295,10 @@ async function main() {
       { allowFailure: true }
     );
     if (!pushResult.success) {
+      fetchBranchForPush(repoDir, branch);
+      const branchState = describeBranchState(repoDir, branch);
       console.error(`✗ Push failed: ${pushResult.stderr}`);
+      console.error(branchState);
       results.failed.push({
         repo,
         prNumber,

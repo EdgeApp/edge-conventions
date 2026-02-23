@@ -206,23 +206,24 @@ Only update for fully landed PRs:
 Do NOT update for: skipped PRs, addressed-but-not-re-reviewed PRs, or repos not published.
 
 <sub-step name="Extract Asana task GIDs">
-For each fully-landed PR, fetch the body and extract the Asana link:
+Pipe the PR metadata through the new helper so you only consume the Asana link once per PR:
 
 ```bash
-gh api "repos/EdgeApp/{repo}/pulls/{prNumber}" --jq '.body'
+printf '[{"repo":"edge-react-gui","prNumber":123}]' | ~/.cursor/commands/pr-land-extract-asana-task.sh > /tmp/asana.json
 ```
 
-Regex: `https://app.asana.com/\d+/\d+/(?:task/)?(\d+)` — capture group 1 is the task GID.
-
-If no Asana link found, report to user and skip that PR.
+The helper outputs JSON like `{ "tasks": [{ "taskGid": "...", "label": "repo#123" }], "missing": [{ "label": "...", "reason": "..." }] }`.
+Review the `missing` array, report any entries lacking an Asana link, and skip those PRs for Asana updates.
 </sub-step>
 
 <sub-step name="Update tasks">
+Feed the `tasks` array into the Asana script:
+
 ```bash
-echo '[{"taskGid":"...","label":"...#123"}]' | ~/.cursor/commands/asana-verification-needed.sh
+jq '.tasks' /tmp/asana.json | ~/.cursor/commands/asana-verification-needed.sh
 ```
 
-The script validates status is "Publish Needed", unsets assignee, sets status to "Verification Needed".
+The script validates status is "Publish Needed", unsets the assignee, and sets status to "Verification Needed".
 
 **Exit codes:**
 - `0` = All updated

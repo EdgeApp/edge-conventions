@@ -30,6 +30,29 @@ const {
   runVerification,
 } = require(path.join(__dirname, "edge-repo.js"));
 
+function describeBranchState(repoDir, branch) {
+  const parts = [];
+  const local = runGit(["rev-parse", branch], repoDir, { allowFailure: true });
+  if (local.success) {
+    parts.push(`Local commit (${branch}): ${local.stdout}`);
+  } else {
+    parts.push(`Local branch "${branch}" missing`);
+  }
+
+  const remote = runGit(["rev-parse", `origin/${branch}`], repoDir, { allowFailure: true });
+  if (remote.success) {
+    parts.push(`Remote commit (origin/${branch}): ${remote.stdout}`);
+  } else {
+    parts.push(`Remote branch origin/${branch} missing`);
+  }
+
+  const status = runGit(["status", "-sb"], repoDir, { allowFailure: true });
+  if (status.stdout) {
+    parts.push(`Status: ${status.stdout.trim()}`);
+  }
+  return parts.join("\n");
+}
+
 async function prepareBranch(repo, branch) {
   const repoDir = getRepoDir(repo);
   const upstream = getUpstreamBranch(repo);
@@ -62,6 +85,7 @@ async function prepareBranch(repo, branch) {
   console.error(`Fetching and checking out ${branch}...`);
   try {
     runGit(["fetch", "origin"], repoDir);
+    runGit(["fetch", "origin", branch], repoDir, { allowFailure: true });
     runGit(["checkout", branch], repoDir);
     runGit(["pull", "--ff-only", "origin", branch], repoDir, {
       allowFailure: true,
@@ -129,6 +153,8 @@ async function prepareBranch(repo, branch) {
   const verifyResult = runVerification(repoDir, upstream);
 
   if (!verifyResult.success) {
+    console.error("Branch state:");
+    console.error(describeBranchState(repoDir, branch));
     result.status = "verification_failed";
     result.message = `Verification failed (exit code ${verifyResult.exitCode})`;
     return result;

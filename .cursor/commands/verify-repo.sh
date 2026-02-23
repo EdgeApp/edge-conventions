@@ -11,8 +11,9 @@
 //   2 = CHANGELOG verification failed
 
 const { execSync } = require("child_process");
-const { readFileSync, existsSync } = require("fs");
+const { readFileSync, existsSync, writeFileSync } = require("fs");
 const path = require("path");
+const os = require("os");
 
 // Parse arguments: positional repo-dir + optional --base <ref> + optional --require-changelog
 let repoDir = process.cwd();
@@ -31,6 +32,30 @@ for (let i = 0; i < args.length; i++) {
 
 const packageJsonPath = path.join(repoDir, "package.json");
 const changelogPath = path.join(repoDir, "CHANGELOG.md");
+
+function sanitizeLabel(label) {
+  return label.replace(/[^a-z0-9]/gi, "-").replace(/-+/g, "-").replace(/^-|-$/g, "");
+}
+
+function runCommandWithLog(command, label, repoDir) {
+  const safeLabel = sanitizeLabel(label || command);
+  const logPath = path.join(os.tmpdir(), `verify-${safeLabel}-${Date.now()}-${Math.random().toString(36).slice(2)}.log`);
+  try {
+    const output = execSync(command, {
+      cwd: repoDir,
+      encoding: "utf8",
+      stdio: "pipe",
+      env: { ...process.env, FORCE_COLOR: "1" },
+    });
+    writeFileSync(logPath, output);
+    return { success: true, logPath };
+  } catch (error) {
+    const stdout = error.stdout ? error.stdout.toString() : "";
+    const stderr = error.stderr ? error.stderr.toString() : "";
+    writeFileSync(logPath, stdout + stderr);
+    return { success: false, logPath, error };
+  }
+}
 
 // Detect repo type
 const isGui = repoDir.includes("edge-react-gui");
@@ -230,32 +255,35 @@ function verifyCode() {
       const fileList = changedFiles.split("\n").map(f => `"${f}"`).join(" ");
       const fileCount = changedFiles.split("\n").length;
       console.log(`▶  eslint (${fileCount} changed file${fileCount === 1 ? "" : "s"} vs ${baseRef})...`);
-      try {
-        execSync(`npx eslint ${fileList}`, {
-          cwd: repoDir,
-          stdio: "inherit",
-          env: { ...process.env, FORCE_COLOR: "1" }
-        });
+      const eslintResult = runCommandWithLog(
+        `npx eslint ${fileList}`,
+        `eslint-${fileCount}-files`,
+        repoDir
+      );
+      if (eslintResult.success) {
         console.log(`✓  eslint (changed files) - passed\n`);
         continue;
-      } catch (e) {
-        console.error(`✗  eslint (changed files) - FAILED\n`);
-        return { success: false, failedStep: "eslint (changed files)" };
       }
+      console.error(`✗  eslint (changed files) - FAILED (log: ${eslintResult.logPath})\n`);
+      return {
+        success: false,
+        failedStep: "eslint (changed files)",
+        logPath: eslintResult.logPath,
+      };
     }
 
     console.log(`▶  yarn ${cmd}...`);
-    try {
-      execSync(`yarn ${cmd}`, {
-        cwd: repoDir,
-        stdio: "inherit",
-        env: { ...process.env, FORCE_COLOR: "1" }
-      });
+    const yarnResult = runCommandWithLog(`yarn ${cmd}`, `yarn-${cmd}`, repoDir);
+    if (yarnResult.success) {
       console.log(`✓  yarn ${cmd} - passed\n`);
-    } catch (e) {
-      console.error(`✗  yarn ${cmd} - FAILED\n`);
-      return { success: false, failedStep: `yarn ${cmd}` };
+      continue;
     }
+    console.error(`✗  yarn ${cmd} - FAILED (log: ${yarnResult.logPath})\n`);
+    return {
+      success: false,
+      failedStep: `yarn ${cmd}`,
+      logPath: yarnResult.logPath,
+    };
   }
 
   return { success: true };
