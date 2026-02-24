@@ -193,6 +193,11 @@ if (prNumber) {
     ) || 'master'
 }
 
+// Apply --base override if provided
+if (flags.base) {
+  baseBranch = flags.base
+}
+
 // ---------------------------------------------------------------------------
 // Diff generation
 // ---------------------------------------------------------------------------
@@ -201,6 +206,29 @@ log('Generating diff...')
 
 let diff
 let changedFiles
+
+// Verify base branch exists before attempting to diff against it
+let baseBranchExists = run(`git rev-parse --verify ${baseBranch}`, {
+  cwd: repoDir,
+  allowFailure: true
+})
+
+if (isLocalBranch && !baseBranchExists) {
+  log(`Warning: Base branch '${baseBranch}' not found. Trying 'origin/${baseBranch}'...`)
+  const originBase = `origin/${baseBranch}`
+  const originExists = run(`git rev-parse --verify ${originBase}`, {
+    cwd: repoDir,
+    allowFailure: true
+  })
+  if (originExists) {
+    baseBranch = originBase
+    baseBranchExists = originExists
+  } else {
+    log(`Error: Base branch '${baseBranch}' does not exist locally or on origin.`)
+    log('Please specify a valid base branch with --base <branch>')
+    process.exit(1)
+  }
+}
 
 const hasCommits = run(`git log --oneline ${baseBranch}..HEAD`, {
   cwd: repoDir,
