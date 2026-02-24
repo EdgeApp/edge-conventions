@@ -31,49 +31,45 @@ If a PR URL or number is provided:
 
 If a branch name is provided (not a PR):
 
-1. Identify the repository from the current working directory or the user's prompt
-2. Change to that repository directory
-3. Verify the branch exists and check it out:
+1. Identify the repository from the current working directory or the user's prompt. If a repo name is given, locate it as a peer directory of `edge-conventions` (see **Repository Synchronization** for details).
+2. Read the target repository's `AGENTS.md` and any `.cursor/rules/` files for repo-specific conventions.
+3. Change to that repository directory
+4. Verify the branch exists and check it out:
    ```bash
    git fetch origin
    git checkout <branch-name>
    # Or if branch doesn't exist locally:
    git checkout -b <branch-name> origin/<branch-name>
    ```
-4. Determine the base branch for comparison (typically `master` or `main`):
+5. Determine the base branch for comparison (typically `master` or `main`):
    ```bash
    git symbolic-ref refs/remotes/origin/HEAD | sed 's@^refs/remotes/origin/@@'
    ```
-5. If the branch has uncommitted or unstaged changes (no commits beyond the base), use `git diff` for unstaged changes and `git diff --cached` for staged changes instead of `git diff <base>...HEAD`. No git checkout operations are needed in this case.
-6. Skip the GitHub MCP sections and proceed directly to **Review Process**
+6. If the branch has uncommitted or unstaged changes (no commits beyond the base), use `git diff` for unstaged changes and `git diff --cached` for staged changes instead of `git diff <base>...HEAD`. No git checkout operations are needed in this case.
+7. Skip the GitHub PR sections and proceed directly to **Review Process**
 
 ## Repository Synchronization (GitHub PRs)
 
-1. Find the matching repository directory in the workspace by name (do NOT use absolute paths - search the workspace for a directory matching the repository name)
-2. Change to that repository directory
+1. Locate the target repository as a peer directory of `edge-conventions`. Determine the parent directory containing `edge-conventions` (e.g., if this skill is at `git/edge-conventions/.cursor/skills/review-code/SKILL.md`, the parent is `git/`). The target repo will be a sibling directory under that parent (e.g., `git/edge-react-gui` for the `edge-react-gui` repository).
+2. Read the target repository's `AGENTS.md` and any `.cursor/rules/` files to understand repo-specific conventions. Pass these as context to the review subagents.
+3. Change to that repository directory
 
 ### Detecting Fork vs Internal Branch
 
-Use the GitHub MCP server to get PR metadata including the head repository owner:
+Get PR metadata including the head repository owner:
 
-```
-CallMcpTool: user-github / pull_request_read
-Arguments: {
-  "method": "get",
-  "owner": "<base-repo-owner>",
-  "repo": "<repo-name>",
-  "pullNumber": <pr-number>
-}
+```bash
+gh pr view <pr-number> --repo <owner>/<repo> \
+  --json headRefName,headRepositoryOwner,baseRefName,headRepository
 ```
 
-The response includes:
-- `head.repo.owner.login`: The owner of the source repository (fork owner or same org)
-- `head.ref`: The branch name in the source repo
-- `base.ref`: The target branch (usually "master" or "main")
-- `base.repo.owner.login`: The owner of the target repository
+The JSON response includes:
+- `headRepositoryOwner.login`: The owner of the source repository (fork owner or same org)
+- `headRefName`: The branch name in the source repo
+- `baseRefName`: The target branch (usually "master" or "main")
 
 **Fork Detection Logic:**
-- If `head.repo.owner.login` equals `base.repo.owner.login`, it's an **internal branch**
+- If `headRepositoryOwner.login` matches the base repo owner, it's an **internal branch**
 - If they differ, it's a **fork** from an external user/organization
 
 ### GitHub PR Checkout
@@ -169,95 +165,78 @@ Provide a structured review with:
 - **Suggestions**: Consider for improvement
 - **Conventions Checklist**: Which conventions were checked and passed/failed
 
-Save the review to a markdown document in the system temp directory (`/tmp` on macOS/Linux), then open it in the current Cursor workspace for the user to review:
-
-```bash
-cursor --reuse-window <review-document-path>
-```
+Save the review to a markdown document in the system temp directory (`/tmp` on macOS/Linux).
 
 Name the document:
 - **For PRs**: `MMDDhhmm_[repository-name]_[branch-name]_pr-[pr-number].md`
 - **For local branches**: `MMDDhhmm_[repository-name]_[branch-name]_review.md`
 
-Pause for the user to review.
+**If running in the Cursor IDE GUI** (detected by the `CURSOR_TRACE_ID` environment variable being set), open the document in Cursor and pause for the user to review:
 
-**For GitHub PRs only:** Once the user has iterated and agreed on the changes, submit the review to GitHub using the process below.
+```bash
+cursor --reuse-window <review-document-path>
+```
+
+**If running from a terminal-based agent** (Cursor CLI, opencode, crush, or similar), print the full path to the saved document.
+
+**For GitHub PRs only:** Submit the review to GitHub using the process below.
 
 **For local branches:** After the user reviews, offer to help fix any issues found or create a PR if desired.
 
 ## Submitting PR Review with Inline Comments (GitHub PRs Only)
 
-Use the GitHub MCP server to add comments inline to specific lines of code rather than one large summary comment. **Skip this section for local branch reviews.**
+Use the `gh` CLI to add comments inline to specific lines of code rather than one large summary comment. **Skip this section for local branch reviews.**
 
-### Step 1: Create a Pending Review
+### Step 1: Build and Submit the Review
 
+Get the head commit SHA:
+
+```bash
+gh pr view <pr-number> --repo <owner>/<repo> --json headRefOid --jq .headRefOid
 ```
-CallMcpTool: user-github / pull_request_review_write
-Arguments: {
-  "method": "create",
-  "owner": "<repo-owner>",
-  "repo": "<repo-name>",
-  "pullNumber": <pr-number>,
-  "commitID": "<head-commit-sha>"
+
+Create a JSON file with the review body, event, and all inline comments, then submit it in a single API call:
+
+```bash
+cat > /tmp/review-payload.json << 'REVIEW_EOF'
+{
+  "commit_id": "<head-commit-sha>",
+  "event": "REQUEST_CHANGES",
+  "body": "## Review Summary\n\n[Brief summary of critical issues and positive observations]\n\nSee inline comments for specific issues.",
+  "comments": [
+    {
+      "path": "src/path/to/file.ts",
+      "line": 42,
+      "side": "RIGHT",
+      "body": "**Issue:** Description of the problem\n\n**Recommendation:**\n```typescript\n// suggested fix\n```"
+    },
+    {
+      "path": "src/path/to/other.ts",
+      "start_line": 10,
+      "line": 15,
+      "start_side": "RIGHT",
+      "side": "RIGHT",
+      "body": "**Warning:** Multi-line comment spanning a range"
+    }
+  ]
 }
+REVIEW_EOF
+
+gh api repos/<owner>/<repo>/pulls/<pr-number>/reviews \
+  --method POST \
+  --input /tmp/review-payload.json
 ```
 
-**Note:** Do NOT include the `event` parameter yet - this creates a pending review that allows adding inline comments.
+Use `"event": "REQUEST_CHANGES"` for critical issues, `"event": "COMMENT"` for suggestions only, or `"event": "APPROVE"` if no issues found.
 
-### Step 2: Add Inline Comments
-
-For each issue that references a specific file and line, add an inline comment:
-
-```
-CallMcpTool: user-github / add_comment_to_pending_review
-Arguments: {
-  "owner": "<repo-owner>",
-  "repo": "<repo-name>",
-  "pullNumber": <pr-number>,
-  "path": "src/path/to/file.ts",
-  "line": <line-number>,
-  "side": "RIGHT",
-  "subjectType": "LINE",
-  "body": "**Issue:** Description of the problem\n\n**Recommendation:**\n```typescript\n// suggested fix\n```"
-}
-```
-
-For multi-line comments spanning a range:
-```
-Arguments: {
-  ...
-  "startLine": <first-line>,
-  "line": <last-line>,
-  "startSide": "RIGHT",
-  "side": "RIGHT",
-  "subjectType": "LINE"
-}
-```
+### Comment Guidelines
 
 **Add inline comments for:**
 - Critical issues (with specific line references)
 - Warnings (with specific line references)
 - Suggestions that reference specific code locations
 
-**Keep as summary only:**
+**Keep as summary body only:**
 - General observations without specific line references
 - Positive feedback
 - Commit message issues
-
-### Step 3: Submit the Review
-
-After adding all inline comments, submit the pending review:
-
-```
-CallMcpTool: user-github / pull_request_review_write
-Arguments: {
-  "method": "submit_pending",
-  "owner": "<repo-owner>",
-  "repo": "<repo-name>",
-  "pullNumber": <pr-number>,
-  "event": "REQUEST_CHANGES",
-  "body": "## Review Summary\n\n[Brief summary of critical issues and positive observations]\n\nSee inline comments for specific issues."
-}
-```
-
-Use `event: "REQUEST_CHANGES"` for critical issues, `event: "COMMENT"` for suggestions only, or `event: "APPROVE"` if no issues found.
