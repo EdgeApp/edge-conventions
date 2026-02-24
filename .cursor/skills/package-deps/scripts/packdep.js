@@ -69,9 +69,12 @@ for (const depDir of depDirs) {
 
   // Remove old tarballs for this package from the GUI directory.
   // Tarball names follow npm's convention: scoped "@foo/bar" → "foo-bar-*"
+  // Use regex to match version number (digit) after prefix to avoid matching
+  // similarly-named packages (e.g., "edge-core-" should not match "edge-core-js-*")
   const namePrefix = depName.replace(/^@/, '').replace(/\//, '-')
+  const prefixPattern = new RegExp(`^${namePrefix}-\\d.*\\.tgz$`)
   for (const file of fs.readdirSync(guiDir)) {
-    if (file.startsWith(namePrefix + '-') && file.endsWith('.tgz')) {
+    if (prefixPattern.test(file)) {
       console.log(`  Removing old tarball: ${file}`)
       fs.unlinkSync(path.join(guiDir, file))
     }
