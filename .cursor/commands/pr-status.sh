@@ -1,120 +1,58 @@
 #!/usr/bin/env bash
-# pr-status.sh — Fetch status of open PRs for a user (REST API).
+# pr-status.sh — Fetch status of open PRs for a user via gh CLI.
 # Single run, no TUI. "New" comments = posted after the PR's last commit.
 #
-# Rate-limit aware:
-#   - ETag caching (304 = free, no quota cost)
-#   - Per-PR updated_at diffing (skip detail fetches for unchanged PRs)
-#   - Tracks X-RateLimit-Remaining, outputs footer + recommended interval
+# Uses gh CLI for all API access (no GITHUB_TOKEN needed).
+# Per-PR updated_at caching to skip detail fetches for unchanged PRs.
 #
 # Usage:
 #   pr-status.sh --repo edge-react-gui [--owner EdgeApp] [--user Jon-edge] [--format text|json]
 #   pr-status.sh                       # All repos for user in EdgeApp org
 #   pr-status.sh --user Jon-edge       # All repos for specific user in EdgeApp org
-#   pr-status.sh --budget 0.5          # Reserve 50% of rate limit for other tools
 #
-# Requires: GITHUB_TOKEN env var, node.
+# Requires: gh CLI (authenticated), node.
 set -euo pipefail
 
-OWNER="EdgeApp" REPO="" USER="" FORMAT="text" BUDGET="0.67"
+OWNER="EdgeApp" REPO="" USER="" FORMAT="text"
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --owner) OWNER="$2"; shift 2 ;;
     --repo) REPO="$2"; shift 2 ;;
     --user) USER="$2"; shift 2 ;;
     --format) FORMAT="$2"; shift 2 ;;
-    --budget) BUDGET="$2"; shift 2 ;;
     *) echo "Unknown arg: $1" >&2; exit 1 ;;
   esac
 done
 
-[[ -z "${GITHUB_TOKEN:-}" ]] && { echo "Error: GITHUB_TOKEN not set." >&2; exit 2; }
+command -v gh &>/dev/null || { echo "Error: gh CLI not found. Install: https://cli.github.com" >&2; exit 2; }
+gh auth status &>/dev/null 2>&1 || { echo "Error: gh not authenticated. Run: gh auth login" >&2; exit 2; }
 
 STATE_DIR="${TMPDIR:-/tmp}/pr-watch-${OWNER}-${REPO:-all}"
 mkdir -p "$STATE_DIR"
 export STATE_DIR
 
 exec node -e '
-const https = require("https")
+const { execFile } = require("child_process")
 const fs = require("fs")
-const crypto = require("crypto")
-const { OWNER, REPO, USER, FORMAT, BUDGET } = {
+const { OWNER, REPO, USER, FORMAT } = {
   OWNER: process.argv[1],
   REPO: process.argv[2] || "",
   USER: process.argv[3],
-  FORMAT: process.argv[4],
-  BUDGET: parseFloat(process.argv[5]) || 0.67
+  FORMAT: process.argv[4]
 }
-const TOKEN = process.env.GITHUB_TOKEN
 const STATE_DIR = process.env.STATE_DIR
 
-// --- Rate limit tracking ---
-let rateLimitRemaining = null
-let rateLimitLimit = null
-let rateLimitReset = null
 let apiCallCount = 0
-let cacheHitCount = 0
 
-// --- ETag + body caching ---
-function cacheKey(path) {
-  return crypto.createHash("md5").update(path).digest("hex").substring(0, 12)
-}
-
-function loadEtag(path) {
-  try { return fs.readFileSync(`${STATE_DIR}/etag-${cacheKey(path)}`, "utf8").trim() } catch { return null }
-}
-
-function saveEtag(path, etag) {
-  if (etag) fs.writeFileSync(`${STATE_DIR}/etag-${cacheKey(path)}`, etag)
-}
-
-function loadCachedBody(path) {
-  try { return JSON.parse(fs.readFileSync(`${STATE_DIR}/body-${cacheKey(path)}.json`, "utf8")) } catch { return null }
-}
-
-function saveCachedBody(path, body) {
-  fs.writeFileSync(`${STATE_DIR}/body-${cacheKey(path)}.json`, JSON.stringify(body))
-}
-
-function ghFetch(path) {
-  return new Promise((resolve, reject) => {
-    const headers = {
-      Authorization: `Bearer ${TOKEN}`,
-      Accept: "application/vnd.github+json",
-      "User-Agent": "pr-status"
-    }
-    const etag = loadEtag(path)
-    if (etag) headers["If-None-Match"] = etag
-
-    https.get({ hostname: "api.github.com", path, headers }, res => {
-      // Track rate limit from every response
-      const rl = res.headers["x-ratelimit-remaining"]
-      const rlLimit = res.headers["x-ratelimit-limit"]
-      const rlReset = res.headers["x-ratelimit-reset"]
-      if (rl != null) rateLimitRemaining = Math.min(rateLimitRemaining ?? Infinity, parseInt(rl, 10))
-      if (rlLimit != null) rateLimitLimit = parseInt(rlLimit, 10)
-      if (rlReset != null) rateLimitReset = parseInt(rlReset, 10)
-
-      if (res.statusCode === 304) {
-        cacheHitCount++
-        const cached = loadCachedBody(path)
-        resolve(cached)
-        return
-      }
-
-      apiCallCount++
-      let data = ""
-      res.on("data", c => (data += c))
-      res.on("end", () => {
-        const newEtag = res.headers["etag"]
-        saveEtag(path, newEtag)
-        try {
-          const body = JSON.parse(data)
-          saveCachedBody(path, body)
-          resolve(body)
-        } catch { resolve(null) }
-      })
-    }).on("error", reject)
+function ghFetch(path, extraArgs) {
+  return new Promise((resolve) => {
+    apiCallCount++
+    const args = ["api", path]
+    if (extraArgs) args.push(...extraArgs)
+    execFile("gh", args, { encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }, (err, stdout) => {
+      if (err) { resolve(null); return }
+      try { resolve(JSON.parse(stdout)) } catch { resolve(null) }
+    })
   })
 }
 
@@ -133,6 +71,20 @@ function loadPreviousPrNumbers() {
 
 function savePrNumbers(numbers) {
   fs.writeFileSync(`${STATE_DIR}/known-prs.json`, JSON.stringify(numbers))
+}
+
+// --- Concurrency limiter ---
+async function pool(items, concurrency, fn) {
+  const results = new Array(items.length)
+  let next = 0
+  async function worker() {
+    while (next < items.length) {
+      const i = next++
+      results[i] = await fn(items[i], i)
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrency, items.length) }, () => worker()))
+  return results
 }
 
 // --- Utilities ---
@@ -161,7 +113,6 @@ async function main() {
 
   const previousPrNumbers = loadPreviousPrNumbers()
 
-  // Collect PRs: either from one repo or search across org
   let prs
   if (REPO) {
     const allPRs = await ghFetch(`/repos/${OWNER}/${REPO}/pulls?state=open&per_page=30`)
@@ -173,44 +124,38 @@ async function main() {
       .filter(p => p.user.login === user)
       .map(p => ({ ...p, _repo: REPO }))
   } else {
-    // Search all repos in org for open PRs by user
     const q = encodeURIComponent(`type:pr state:open author:${user} org:${OWNER}`)
     const search = await ghFetch(`/search/issues?q=${q}&per_page=50&sort=updated&order=desc`)
     if (!search?.items) {
       process.stderr.write("API error searching PRs\n")
       process.exit(1)
     }
-    // Search results lack head sha; fetch full PR objects
-    prs = await Promise.all(search.items.map(async item => {
+    prs = await pool(search.items, 4, async item => {
       const repo = item.repository_url.split("/").pop()
       const full = await ghFetch(`/repos/${OWNER}/${repo}/pulls/${item.number}`)
       return { ...full, _repo: repo }
-    }))
+    })
   }
 
-  // Track which PRs are new
   const currentPrNumbers = prs.map(p => p.number)
   const newPrNumbers = new Set(currentPrNumbers.filter(n => !previousPrNumbers.includes(n)))
   savePrNumbers(currentPrNumbers)
 
   let changedPrCount = 0
 
-  const results = await Promise.all(prs.map(async pr => {
+  const results = await pool(prs, 4, async pr => {
     const repo = pr._repo
     const n = pr.number
     const sha = pr.head.sha
     const updatedAt = pr.updated_at
 
-    // Check if PR has changed since last poll
     const cached = loadPrCache(n)
     if (cached && cached.updatedAt === updatedAt && !newPrNumbers.has(n)) {
-      // Unchanged — use cached result, but update isNew flag
       return { ...cached.result, isNew: false }
     }
 
     changedPrCount++
 
-    // Fetch in parallel: inline comments, issue comments, check runs, commits, reviews
     const [inline, issue, checks, commits, reviews] = await Promise.all([
       ghFetch(`/repos/${OWNER}/${repo}/pulls/${n}/comments?per_page=100`),
       ghFetch(`/repos/${OWNER}/${repo}/issues/${n}/comments?per_page=100`),
@@ -219,14 +164,12 @@ async function main() {
       ghFetch(`/repos/${OWNER}/${repo}/pulls/${n}/reviews?per_page=100`)
     ])
 
-    // Last commit timestamp
     const commitList = Array.isArray(commits) ? commits : []
     const lastCommit = commitList.length > 0 ? commitList[commitList.length - 1] : null
     const lastCommitDate = lastCommit?.commit?.committer?.date
       || lastCommit?.commit?.author?.date
       || null
 
-    // All comments by others
     const allComments = [
       ...(Array.isArray(inline) ? inline : [])
         .filter(c => c.user?.login !== user)
@@ -236,7 +179,6 @@ async function main() {
         .map(c => ({ id: c.id, user: c.user?.login, body: c.body?.substring(0, 120), at: c.created_at, type: "issue" }))
     ].sort((a, b) => b.at.localeCompare(a.at))
 
-    // Split into new (after last commit) and old
     const newComments = lastCommitDate
       ? allComments.filter(c => c.at > lastCommitDate)
       : []
@@ -246,7 +188,6 @@ async function main() {
 
     const checkRuns = checks?.check_runs || []
 
-    // Review approval status — dedupe to latest review per human user
     const reviewList = Array.isArray(reviews) ? reviews : []
     const latestByUser = {}
     for (const r of reviewList) {
@@ -291,17 +232,21 @@ async function main() {
 
     savePrCache(n, result, updatedAt)
     return result
-  }))
+  })
 
-  // Calculate recommended interval
-  const callsPerPoll = 1 + (changedPrCount > 0 ? changedPrCount * 5 : prs.length * 5)
+  // Fetch rate limit info
+  const rateLimit = await ghFetch("/rate_limit")
+  const rateLimitRemaining = rateLimit?.resources?.core?.remaining ?? null
+  const rateLimitLimit = rateLimit?.resources?.core?.limit ?? null
+  const rateLimitReset = rateLimit?.resources?.core?.reset ?? null
+
+  const callsPerPoll = apiCallCount
   const secsUntilReset = rateLimitReset ? Math.max(1, rateLimitReset - Math.floor(Date.now() / 1000)) : 3600
-  const budgetCalls = rateLimitRemaining != null ? Math.floor(rateLimitRemaining * BUDGET) : 2500
+  const budgetCalls = rateLimitRemaining != null ? Math.floor(rateLimitRemaining * 0.67) : 2500
   const recommendedInterval = budgetCalls > 0 ? Math.max(30, Math.ceil(secsUntilReset / (budgetCalls / callsPerPoll))) : 300
 
   const meta = {
     apiCalls: apiCallCount,
-    cacheHits: cacheHitCount,
     changedPrs: changedPrCount,
     rateLimitRemaining,
     rateLimitLimit,
@@ -449,9 +394,8 @@ async function main() {
   const rlInfo = rateLimitRemaining != null
     ? `API: ${rateLimitRemaining}/${rateLimitLimit} remaining`
     : "API: unknown"
-  const cacheInfo = `${apiCallCount} calls, ${cacheHitCount} cached`
   out.push(`${D}${LINE}${R}`)
-  out.push(`${D}${rlInfo}  |  ${cacheInfo}  |  next: ${recommendedInterval}s${R}`)
+  out.push(`${D}${rlInfo}  |  ${apiCallCount} calls  |  next: ${recommendedInterval}s${R}`)
 
   // Machine-readable line for pr-watch.sh to parse
   out.push(`# interval:${recommendedInterval}`)
@@ -460,4 +404,4 @@ async function main() {
 }
 
 main().catch(e => { process.stderr.write("Error: " + e.message + "\n"); process.exit(1) })
-' "$OWNER" "$REPO" "$USER" "$FORMAT" "$BUDGET"
+' "$OWNER" "$REPO" "$USER" "$FORMAT"
