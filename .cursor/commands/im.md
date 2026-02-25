@@ -36,6 +36,7 @@ After Step 0 determines the target repo (or if no Asana task, use the current re
    - **On the correct feature branch**: Continue.
 3. **Branch naming**: `$GIT_BRANCH_PREFIX/<short-description>` or `$GIT_BRANCH_PREFIX/fix/<short-description>` for bug fixes. Use kebab-case. Example: `<prefix>/some-feature` or `<prefix>/fix/some-bug`
 4. **Assume a new branch is needed** unless the current branch clearly matches the task. Do NOT ask for confirmation — the existing branch has its own committed work and is unaffected.
+5. **Install dependencies**: After creating or switching to the feature branch, run `~/.cursor/commands/install-deps.sh` to ensure dependencies match the base branch state.
 
 If the task spans multiple repos, note the additional repos but implement in the primary repo first.
 </step>

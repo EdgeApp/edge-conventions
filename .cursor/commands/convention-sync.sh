@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # convention-sync.sh — Sync ~/.cursor/ files with the edge-conventions repo.
 # Usage: ./convention-sync.sh <repo-dir> [--stage] [--commit -m "message"] [--repo-to-user]
-# Compares ~/.cursor/{commands,rules,skills} against <repo-dir>/.cursor/ and
+# Compares ~/.cursor/{commands,rules,skills,scripts} against <repo-dir>/.cursor/ and
 # outputs a structured JSON summary of new, modified, and deleted files.
 # With --stage: copies changed files and stages them in git (or copies to user dir with --repo-to-user).
 # With --commit: stages + commits (requires -m). Only valid for user-to-repo direction.
@@ -36,7 +36,7 @@ fi
 
 USER_DIR="$HOME/.cursor"
 REPO_CURSOR="$REPO_DIR/.cursor"
-DIRS="commands rules skills"
+DIRS="commands rules skills scripts"
 SYNCIGNORE="$USER_DIR/.syncignore"
 
 # Load ignore patterns from .syncignore (one glob per line, # comments, blank lines skipped)

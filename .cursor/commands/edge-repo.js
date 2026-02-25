@@ -133,6 +133,11 @@ function ghGraphql(query, variables = {}) {
   return parsed.data;
 }
 
+function installAndPrepare(repoDir) {
+  const script = path.join(__dirname, "install-deps.sh");
+  execSync(`"${script}" "${repoDir}"`, { stdio: "inherit" });
+}
+
 module.exports = {
   getRepoDir,
   getUpstreamBranch,
@@ -140,6 +145,7 @@ module.exports = {
   parseConflictFiles,
   isChangelogOnly,
   runVerification,
+  installAndPrepare,
   ghApi,
   ghGraphql,
 };

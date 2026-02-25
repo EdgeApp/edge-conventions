@@ -25,7 +25,7 @@
 const { execSync } = require("child_process");
 const { existsSync, readFileSync, writeFileSync } = require("fs");
 const path = require("path");
-const { getRepoDir, runGit: _runGit } = require(path.join(__dirname, "edge-repo.js"));
+const { getRepoDir, runGit: _runGit, installAndPrepare } = require(path.join(__dirname, "edge-repo.js"));
 
 // Thin wrapper: publish only needs the stdout string from runGit
 function runGit(args, cwd) {
@@ -173,8 +173,8 @@ async function publishRepo(repo, branch) {
     // Run verification
     console.error("\nRunning verification...");
     try {
-      execSync("yarn install && yarn prepare", { cwd: repoDir, stdio: "inherit" });
-      
+      installAndPrepare(repoDir);
+
       const pkg = JSON.parse(readFileSync(pkgPath, "utf8"));
       if (pkg.scripts?.verify) {
         execSync("yarn verify", { cwd: repoDir, stdio: "inherit" });

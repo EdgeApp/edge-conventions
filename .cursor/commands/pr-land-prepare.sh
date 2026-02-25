@@ -28,6 +28,7 @@ const {
   parseConflictFiles,
   isChangelogOnly,
   runVerification,
+  installAndPrepare,
 } = require(path.join(__dirname, "edge-repo.js"));
 
 function describeBranchState(repoDir, branch) {
@@ -148,7 +149,16 @@ async function prepareBranch(repo, branch) {
 
   console.error("✓ Rebase complete");
 
-  // Step 5: Run verification (lint scoped to files changed vs upstream)
+  // Step 5: Install dependencies and prepare
+  try {
+    installAndPrepare(repoDir);
+  } catch (e) {
+    result.status = "install_failed";
+    result.message = `Dependency install failed: ${e.message}`;
+    return result;
+  }
+
+  // Step 6: Run verification (lint scoped to files changed vs upstream)
   console.error("\nRunning verification...");
   const verifyResult = runVerification(repoDir, upstream);
 

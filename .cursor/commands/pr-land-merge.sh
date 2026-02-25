@@ -35,6 +35,7 @@ const {
   isChangelogOnly,
   runVerification,
   ghApi,
+  installAndPrepare,
 } = require(path.join(__dirname, "edge-repo.js"));
 
 function sanitizeBranchLabel(branch) {
@@ -286,6 +287,21 @@ async function main() {
     }
 
     console.error("✓ Rebase complete");
+
+    // STEP 1b: Install dependencies and prepare after rebase
+    try {
+      installAndPrepare(repoDir);
+    } catch (e) {
+      console.error(`✗ Dependency install failed: ${e.message}`);
+      results.failed.push({
+        repo,
+        prNumber,
+        branch,
+        success: false,
+        message: `Dependency install failed: ${e.message}`,
+      });
+      continue;
+    }
 
     // STEP 2: Push rebased branch
     console.error("Pushing rebased branch...");
