@@ -12,11 +12,14 @@ This skill guides you through compiling, launching, and controlling the Edge wal
 - Xcode installed with iOS simulators
 - Working directory: `edge-react-gui`
 - MCP servers available: `user-xcodebuild`, `user-mobile-mcp`
+- Artifact directory input: `ARTIFACTS_DIR` (when called from execute-plan, use `/tmp/YYYYMMDDTHHMM-<title>-Plan`)
+- Artifact naming rule: prefix all screenshots and videos with `YYYYMMDDTHHMM-`
 
 ## Workflow Overview
 
 ```
 Task Progress:
+- [ ] Step 0: Prepare artifact directory
 - [ ] Step 1: Install dependencies and prepare
 - [ ] Step 2: Clean iOS build artifacts
 - [ ] Step 3: Prepare iOS-specific files
@@ -24,7 +27,21 @@ Task Progress:
 - [ ] Step 5: Start Metro bundler
 - [ ] Step 6: Build and launch app
 - [ ] Step 7: Log into test account (if needed)
+- [ ] Step 8: Stop recording and report artifacts
 ```
+
+## Step 0: Prepare Artifact Directory
+
+Before any simulator automation:
+
+```bash
+ARTIFACTS_DIR="${ARTIFACTS_DIR:-/tmp/debug-edge-artifacts}"
+mkdir -p "$ARTIFACTS_DIR"
+```
+
+Use this directory for:
+- simulator recording video
+- screenshots captured while debugging
 
 ## Step 1: Install Dependencies and Prepare
 
@@ -94,6 +111,23 @@ The build can take 10-15 minutes on first run. Run with `block_until_ms: 900000`
 
 If debugging unrelated to account creation, use an existing test account.
 
+### Start Simulator Recording Before Automation
+
+Start recording immediately before taps/swipes/type actions:
+
+```bash
+VIDEO_STAMP="$(date +"%Y%m%dT%H%M")"
+VIDEO_PATH="$ARTIFACTS_DIR/${VIDEO_STAMP}-sim-automation.mp4"
+```
+
+Then:
+
+```
+MCP: user-xcodebuild
+Tool: record_sim_video
+Arguments: { "start": true, "fps": 30, "outputFile": "<VIDEO_PATH>" }
+```
+
 ### Find UI Elements
 
 First, get the current UI state to locate buttons:
@@ -115,6 +149,18 @@ Arguments: { "label": "1", "postDelay": 0.3 }
 ```
 
 Repeat 4 times total for PIN "1111".
+
+### Stop Simulator Recording After Automation
+
+When automation is finished (or before aborting due to failure), stop recording:
+
+```
+MCP: user-xcodebuild
+Tool: record_sim_video
+Arguments: { "stop": true }
+```
+
+Record `VIDEO_PATH` in your execution summary.
 
 **Alternative using mobile-mcp**: If you need to use mobile-mcp instead:
 
@@ -237,10 +283,28 @@ Tool: start_sim_log_cap
 
 ### Take Screenshots
 
+When you need a screenshot during debugging:
+
 ```
 MCP: user-xcodebuild
 Tool: screenshot
+Arguments: { "returnFormat": "path" }
 ```
+
+Then copy or move it into `ARTIFACTS_DIR` with required prefix:
+
+```bash
+SCREEN_STAMP="$(date +"%Y%m%dT%H%M")"
+cp "<returned-path>" "$ARTIFACTS_DIR/${SCREEN_STAMP}-<label>.png"
+```
+
+If copy fails (same filesystem move is preferred), use:
+
+```bash
+mv "<returned-path>" "$ARTIFACTS_DIR/${SCREEN_STAMP}-<label>.png"
+```
+
+Every screenshot filename must start with `YYYYMMDDTHHMM-`.
 
 ### Type Text
 
@@ -251,6 +315,16 @@ MCP: user-xcodebuild
 Tool: type_text
 Arguments: { "text": "your text here" }
 ```
+
+## Step 8: Stop Recording and Report Artifacts
+
+Before ending the debug run:
+
+1. Ensure simulator recording is stopped (`record_sim_video` with `{ "stop": true }`)
+2. List saved artifacts in `ARTIFACTS_DIR`
+3. Return artifact paths in the final report:
+   - video path(s)
+   - screenshot path(s)
 
 ## Troubleshooting
 
