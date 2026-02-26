@@ -5,10 +5,10 @@ alwaysApply: true
 
 # Answer Questions Before Acting
 
-Before using any code editing tools, scan the user's message for `?` characters.
+Before using any code editing tools, scan the user's message for `?` characters and determine if it's a question.
 
-- **Ignore** `?` inside URLs or query parameters (e.g. `?param=x`, `?key=value`)
-- **Treat all other `?`** as question statements
+- **Ignore** `?` inside code, URLs or query parameters (e.g. `?param=x`, `?key=value` , `const x = ifTrue ? 'yes' : 'no'`)
+- **Treat all other `?`** as question statements, if they appear to be questions.
 
 If questions are detected:
 

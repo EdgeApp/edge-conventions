@@ -14,10 +14,12 @@ const args = process.argv.slice(2);
 let title = null;
 let bodyFile = null;
 let draft = false;
+let asanaTask = null;
 
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--title" && args[i + 1]) title = args[++i];
   else if (args[i] === "--body-file" && args[i + 1]) bodyFile = args[++i];
+  else if (args[i] === "--asana-task" && args[i + 1]) asanaTask = args[++i];
   else if (args[i] === "--draft") draft = true;
 }
 
@@ -139,6 +141,23 @@ if (!body) {
   }
 }
 
+// Inject Asana link if provided and not already present
+if (asanaTask) {
+  const asanaUrl = `https://app.asana.com/0/0/${asanaTask}/f`;
+  const asanaRegex = new RegExp(`https://app\\.asana\\.com/\\d+/\\d+/(?:task/)?${asanaTask}`, "i");
+  if (!asanaRegex.test(body)) {
+    const link = `[Asana task](${asanaUrl})`;
+    const descIdx = body.indexOf("### Description\n");
+    if (descIdx !== -1) {
+      const afterHeader = descIdx + "### Description\n".length;
+      const rest = body.slice(afterHeader).replace(/^\n*/, "");
+      body = body.slice(0, afterHeader) + `\n${link}\n\n` + rest;
+    } else {
+      body = `${link}\n\n` + body;
+    }
+  }
+}
+
 // Create PR via gh CLI — write body to a temp file to avoid arg length issues
 const tmpBody = path.join(os.tmpdir(), `pr-body-${process.pid}.md`);
 fs.writeFileSync(tmpBody, body, "utf8");
@@ -147,6 +166,11 @@ if (draft) ghArgs.push("--draft");
 
 const result = spawnSync("gh", ghArgs, { encoding: "utf8" });
 try { fs.unlinkSync(tmpBody); } catch {}
+if (bodyFile && bodyFile.startsWith(os.tmpdir())) {
+  try {
+    fs.unlinkSync(bodyFile);
+  } catch {}
+}
 if (result.status !== 0) {
   console.error("ERROR:", (result.stderr || "").trim());
   process.exit(1);

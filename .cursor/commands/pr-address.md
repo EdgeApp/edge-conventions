@@ -12,16 +12,20 @@
 <rule id="resolution-source-of-truth">Only explicitly resolved threads (`isResolved: true`) or `<!-- addressed:... -->` markers count as resolved. Recency (commits after a comment) does NOT mean resolved.</rule>
 </rules>
 
-<step id="1" name="Fetch all unresolved feedback">
-Always fetch live from GitHub. The script returns all unresolved feedback — no recency filtering.
+<step id="1" name="Fetch all unresolved feedback and PR body">
+Always fetch live from GitHub. Run both in parallel:
 
 ```bash
+# Fetch unresolved feedback
 ~/.cursor/commands/pr-address.sh fetch --owner <OWNER> --repo <REPO> --pr <NUMBER>
+
+# Populate /tmp/pr-body.md from the live PR body (source of truth)
+~/.cursor/commands/pr-address.sh fetch-pr-body --owner <OWNER> --repo <REPO> --pr <NUMBER>
 ```
 
-If the script exits code 2 with `PROMPT_GH_AUTH`, prompt: "`gh` CLI is not authenticated. Please run: `gh auth login`"
+If either script exits code 2 with `PROMPT_GH_AUTH`, prompt: "`gh` CLI is not authenticated. Please run: `gh auth login`"
 
-The output contains:
+The `fetch` output contains:
 - **prAuthor**: The PR author's GitHub username
 - **currentUser**: Your GitHub username (the authenticated `gh` user)
 - **hasHumanReviewers**: `true` if any external human reviewer (not `currentUser`, not bots) has commented — used for autosquash decision
@@ -29,6 +33,12 @@ The output contains:
 - **threads**: All unresolved inline review threads (includes comments from `currentUser` for context)
 - **reviewBodies**: Latest review body per non-author reviewer (excludes `prAuthor` and bots)
 - **topLevel**: Top-level comments (excludes `prAuthor` and bots)
+
+The `fetch-pr-body` call writes the current PR body to `/tmp/pr-body.md`. This file is available for editing throughout the session. If you need to update the PR body (e.g. to revise the description after addressing feedback), edit `/tmp/pr-body.md` via the Write tool and push it back:
+
+```bash
+gh pr edit <NUMBER> --body-file /tmp/pr-body.md
+```
 </step>
 
 <step id="2" name="Process all unresolved feedback">

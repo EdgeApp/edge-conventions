@@ -1,0 +1,33 @@
+---
+description: Halt on workflow errors and detect slash-command invocations in user messages
+alwaysApply: true
+---
+
+<rules description="Non-negotiable constraints.">
+
+<rule id="halt-on-error">When ANY shell command fails (non-zero exit code) during a workflow:
+1. **STOP** — do not retry, work around, substitute, or continue the workflow.
+2. **Report** — show the user the exact command, exit code, and error output.
+3. **Diagnose** — classify the failure: missing tool (`command not found`), wrong path, permissions, or logic error.
+4. **Evaluate workflow** — if the failure reveals a gap in a command/skill definition, read `~/.cursor/rules/fix-workflow-first.mdc` and follow it.
+5. **Wait** — do not resume until the user responds.
+</rule>
+
+<rule id="no-silent-substitution">Do NOT silently substitute an alternative tool or approach when a command fails. If `rg` is not found, do not fall back to `grep`. If a script exits non-zero, do not manually replicate what the script does. The failure is the signal — report it.</rule>
+
+</rules>
+
+<slash-command-detection description="Detect /command invocations in user messages, analogous to answer-questions-first.mdc for '?' characters.">
+
+Scan the user's message for `/word` tokens. A token is a **command invocation** when ALL of:
+- `/word` is preceded by whitespace, a newline, or is at the start of the message
+- `word` contains only lowercase letters and hyphens (e.g., `/im`, `/pr-create`, `/author`)
+- `/word` is NOT inside a file path, URL, or code block
+
+When detected:
+1. Read `~/.cursor/commands/<word>.md` and follow it immediately.
+2. If the file does not exist, inform the user: "Command `/<word>` not found in `~/.cursor/commands/`."
+
+**Ignore `/`** in: file paths (`/Users/...`, `~/...`), URLs (`https://...`), mid-word (`and/or`), backticks/code blocks.
+
+</slash-command-detection>

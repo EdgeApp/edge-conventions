@@ -72,7 +72,7 @@ Run full verification before creating the PR:
 
 Where `<upstream-ref>` is `origin/develop` for `edge-react-gui` or `origin/master` for other repos. Set `block_until_ms: 120000`.
 
-**CHANGELOG check:** Before running verification, confirm a CHANGELOG entry exists on this branch: `git diff origin/$DEFAULT_BRANCH..HEAD -- CHANGELOG.md`. If empty, add one now (see `im.md` CHANGELOG placement rules).
+**CHANGELOG check:** Before running verification, read the top ~50 lines of `CHANGELOG.md` and confirm that entries exist which reflect the branch's changes. If no matching entries exist, add them now (see `im.md` CHANGELOG placement rules).
 
 If verification fails, fix the issue, amend or fixup the relevant commit, push again, then continue.
 </step>
@@ -86,9 +86,6 @@ DEFAULT_BRANCH=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/de
 
 # All commit messages on this branch
 git log origin/$DEFAULT_BRANCH..HEAD --format=%B---
-
-# CHANGELOG diff
-git diff origin/$DEFAULT_BRANCH..HEAD -- CHANGELOG.md
 ```
 
 <sub-step name="PR title">
@@ -142,14 +139,14 @@ If Asana context was fetched:
 
 - **Title**: Align the PR title with the task name if it's descriptive.
 - **Dependencies**: Cross-reference with linked PRs mentioned in task comments.
-- **Context subsection**: Add a `#### Context` subsection at the **beginning** of the Description section — what the task is, why it matters, key decisions from comments. Wrap file paths, function names, and code references in backticks.
+- **Context subsection**: Add a `#### Context` subsection at the **beginning** of the Description section — what the task is, why it matters, key decisions from comments. Wrap file paths, function names, and code references in backticks. The Asana link itself is injected by `pr-create.sh` via `--asana-task` — do not duplicate it here.
 
 Example:
 
 ```markdown
 #### Context
 
-Asana: "gui: Token list not updating after add" (P2). The `useTokenList` hook
+"gui: Token list not updating after add" (P2). The `useTokenList` hook
 caches stale data because `useSyncEffect` doesn't re-trigger on `currencyConfig` changes.
 
 #### Changes
@@ -167,13 +164,16 @@ caches stale data because `useSyncEffect` doesn't re-trigger on `currencyConfig`
 <step id="7" name="Create PR">
 Create the PR immediately — do not ask for confirmation.
 
-1. **Write the body to a temp file** using the Write tool (NOT a shell command):
+1. **Write the body to a temp file** using the **Write tool** (NOT ApplyPatch, NOT a shell command):
    - Path: `/tmp/pr-body.md`
    - Content: the full PR body built in step 6
+   - The Write tool **overwrites** the file. ApplyPatch `Add File` may append to an existing file, causing stale content from a prior PR to bleed through. **Always use Write.**
 2. **Run the script**:
    ```bash
-   ~/.cursor/commands/pr-create.sh --title "<title>" --body-file /tmp/pr-body.md
+   ~/.cursor/commands/pr-create.sh --title "<title>" --body-file /tmp/pr-body.md --asana-task <task_gid>
    ```
+   - Pass `--asana-task <task_gid>` when an Asana task is available. The script injects a clickable Asana link into the PR body if one isn't already present. This is **required** for downstream `/pr-land` to extract the task GID.
+   - The script cleans up `/tmp/pr-body.md` after use to prevent cross-PR contamination. It will be re-populated from GitHub if needed during `/pr-address`.
 
 Using `--body-file` avoids shell escaping issues with multi-line content. Do NOT use `--body` with inline content.
 

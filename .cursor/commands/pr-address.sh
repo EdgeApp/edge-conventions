@@ -10,6 +10,7 @@
 #   mark-addressed --owner <o> --repo <r> --pr <n> --type <review|comment> --target-id <id> --body <text>
 #   resolve-id     --owner <o> --repo <r> --pr <n> --node-id <id>
 #   headline       --owner <o> --repo <r> --sha <sha>
+#   fetch-pr-body  --owner <o> --repo <r> --pr <n>         Fetch current PR body → /tmp/pr-body.md
 #   autosquash                                             Rebase --autosquash from merge-base
 #
 # Exit codes: 0 = success, 1 = error, 2 = needs user input (e.g. gh not authenticated)
@@ -249,6 +250,16 @@ case "$CMD" in
     gh api "repos/$OWNER/$REPO/commits/$SHA" --jq '.commit.message | split("\n") | .[0]'
     ;;
 
+  fetch-pr-body)
+    require_gh
+    if [[ -z "$OWNER" || -z "$REPO" || -z "$PR" ]]; then
+      echo "Error: --owner, --repo, --pr required" >&2; exit 1
+    fi
+    BODY=$(gh api "repos/$OWNER/$REPO/pulls/$PR" --jq '.body // ""')
+    echo "$BODY" > /tmp/pr-body.md
+    echo ">> Wrote PR body to /tmp/pr-body.md ($(wc -c < /tmp/pr-body.md | tr -d ' ') bytes)"
+    ;;
+
   autosquash)
     DEFAULT_UPSTREAM=$(git symbolic-ref --quiet --short refs/remotes/origin/HEAD 2>/dev/null \
       || echo "origin/$(git remote show origin | sed -n '/HEAD branch/s/.*: //p')")
@@ -258,7 +269,7 @@ case "$CMD" in
     ;;
 
   *)
-    echo "Usage: pr-address.sh {fetch|reply|resolve-thread|mark-addressed|resolve-id|headline|autosquash} [args]" >&2
+    echo "Usage: pr-address.sh {fetch|reply|resolve-thread|mark-addressed|resolve-id|headline|fetch-pr-body|autosquash} [args]" >&2
     exit 1
     ;;
 esac
