@@ -112,7 +112,7 @@ All GitHub API operations use **`gh` CLI** (`gh api`, `gh api graphql`, `gh pr`)
 | Script | What it does | API |
 |--------|-------------|-----|
 | [`pr-status-gql.sh`](.cursor/commands/pr-status-gql.sh) | PR status with review state, CI checks, new comments (primary) | `gh api graphql` |
-| [`pr-status.sh`](.cursor/commands/pr-status.sh) | Same as above, REST fallback when `gh` unavailable | `https` + `$GITHUB_TOKEN` |
+| [`pr-status.sh`](.cursor/commands/pr-status.sh) | Same as above, REST fallback | `gh api` REST |
 | [`pr-watch.sh`](.cursor/commands/pr-watch.sh) | TUI wrapper — auto-refresh dashboard with rate limit awareness | Delegates to above |
 
 ### PR Landing Pipeline (`/pr-land`)
@@ -154,7 +154,89 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 |--------|-------------|
 | [`lint-commit.sh`](.cursor/commands/lint-commit.sh) | ESLint `--fix` before commit, auto-runs `update-eslint-warnings` when available |
 | [`lint-warnings.sh`](.cursor/commands/lint-warnings.sh) | Update `eslint-warnings.mdc` knowledge base from current lint output |
+| [`install-deps.sh`](.cursor/commands/install-deps.sh) | Install dependencies and run prepare script |
 | [`upgrade-dep.sh`](.cursor/commands/upgrade-dep.sh) | Upgrade a dependency in the GUI repo |
+
+### Sync & Portability
+
+| Script | What it does |
+|--------|-------------|
+| [`convention-sync.sh`](.cursor/commands/convention-sync.sh) | Diff and sync `~/.cursor/` files with the edge-conventions repo |
+| [`tool-sync.sh`](.cursor/commands/tool-sync.sh) | Sync Cursor rules, commands, and scripts to OpenCode and Claude Code formats |
+| [`port-to-opencode.sh`](.cursor/scripts/port-to-opencode.sh) | Convert Cursor `.mdc`/`.md` files to OpenCode-compatible JSON + MD mirrors |
+
+---
+
+## Dependency Graph
+
+Command → script dependencies and script → script cross-references.
+
+### Commands → Scripts
+
+```
+/im ─────────────── lint-warnings.sh
+                     lint-commit.sh
+                     install-deps.sh
+                     verify-repo.sh
+                     asana-get-context.sh
+
+/pr-create ──────── pr-create.sh
+                     lint-commit.sh
+                     verify-repo.sh
+                     asana-attach-pr.sh ──→ asana-whoami.sh
+                     asana-get-context.sh
+
+/pr-address ─────── pr-address.sh
+                     lint-commit.sh
+
+/pr-review ──────── github-pr-review.sh
+
+/pr-land ────────── pr-land-discover.sh
+                     pr-land-comments.sh
+                     pr-land-prepare.sh ──→ edge-repo.js
+                     verify-repo.sh
+                     pr-land-merge.sh ────→ edge-repo.js
+                     pr-land-publish.sh ──→ edge-repo.js
+                     pr-land-extract-asana-task.sh
+                     asana-verification-needed.sh
+                     lint-commit.sh
+                     upgrade-dep.sh
+
+/dep-pr ─────────── asana-get-context.sh
+                     asana-create-dep-task.sh ──→ asana-whoami.sh
+
+/convention-sync ── convention-sync.sh
+
+/standup ────────── asana-standup.sh ──→ asana-whoami.sh
+                     github-pr-activity.sh
+
+/chat-audit ─────── cursor-chat-extract.js
+
+/task-review ────── asana-get-context.sh
+
+/changelog ──────── (no scripts)
+/q ──────────────── (no scripts)
+/author ─────────── (no scripts)
+```
+
+### Script → Script
+
+```
+asana-attach-pr.sh ────────→ asana-whoami.sh
+asana-create-dep-task.sh ──→ asana-whoami.sh
+asana-standup.sh ──────────→ asana-whoami.sh
+pr-watch.sh ───────────────→ pr-status-gql.sh | pr-status.sh
+pr-land-prepare.sh ────────→ edge-repo.js
+pr-land-merge.sh ──────────→ edge-repo.js
+pr-land-publish.sh ────────→ edge-repo.js
+```
+
+### Shared Modules
+
+```
+edge-repo.js ──── Used by: pr-land-prepare.sh, pr-land-merge.sh, pr-land-publish.sh
+asana-whoami.sh ─ Used by: asana-attach-pr.sh, asana-create-dep-task.sh, asana-standup.sh
+```
 
 ---
 
