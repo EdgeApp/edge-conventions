@@ -305,6 +305,10 @@ const subagents = {
 
   'review-servers': isServer ? changedFiles : false,
 
+  'review-performance': filesWithPattern(
+    /\b(useWatch|withWallet|YAOB|onBlockHeightChanged|onSyncStatusChanged|onNewTokens|onTransactions|EngineEmitter|BLOCK_HEIGHT_CHANGED|ADDRESSES_CHECKED|TRANSACTIONS|updateBlockHeight|onSeenTxCheckpoint|reportDetectedTokens|onStakingStatusChanged|InteractionManager|transitionStart|currencyWallets|saveWalletLoop|updateQueue|makeEngineEmitter)\b/
+  ),
+
   'review-code-quality': changedFiles,
   'review-comments': changedFiles,
   'review-tests': changedFiles,

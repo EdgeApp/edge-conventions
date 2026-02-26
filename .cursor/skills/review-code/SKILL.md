@@ -40,7 +40,7 @@ For each entry in `manifest.subagents`:
 - **Skip** if the value is `false` or an empty array `[]`.
 - **Launch** if the value is `true` (no file filtering) or a non-empty array (those specific files).
 
-Use the Task tool with the matching `subagent_type` (e.g. `review-react`, `review-async`, etc.). Launch up to 4 in parallel; batch the rest.
+Use the Task tool with the matching `subagent_type` (e.g. `review-react`, `review-async`, `review-performance`, etc.). Launch up to 4 in parallel; batch the rest.
 
 Each subagent prompt must include:
 
