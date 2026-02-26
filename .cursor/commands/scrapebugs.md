@@ -301,8 +301,8 @@ Rules ready to add to review subagents:
 
 To add these rules to review subagents, run:
 `/scraperev` with manual review, or manually add selected rules to:
-- `/Users/paul/git/edge-conventions/.cursor/agents/review-errors.md`
-- `/Users/paul/git/edge-conventions/.cursor/agents/review-react.md`
+- `~/git/edge-conventions/.cursor/agents/review-errors.md`
+- `~/git/edge-conventions/.cursor/agents/review-react.md`
 - etc.
 ```
 
