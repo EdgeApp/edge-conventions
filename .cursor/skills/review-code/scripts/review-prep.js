@@ -4,26 +4,11 @@
 const { execSync } = require('child_process')
 const path = require('path')
 const fs = require('fs')
+const { ensureGhToken } = require('./gh-token')
 
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
-
-function ensureGhToken() {
-  if (process.env.GH_TOKEN) return
-  try {
-    const b64 = execSync(
-      'security find-generic-password -s "gh:github.com" -w 2>/dev/null',
-      { encoding: 'utf8' }
-    ).trim()
-    const match = b64.match(/^go-keyring-base64:(.+)$/)
-    if (match) {
-      process.env.GH_TOKEN = Buffer.from(match[1], 'base64').toString('utf8')
-    } else if (b64.startsWith('gho_') || b64.startsWith('ghp_')) {
-      process.env.GH_TOKEN = b64
-    }
-  } catch (_) {}
-}
 
 ensureGhToken()
 
@@ -135,7 +120,7 @@ if (prNumber) {
   )
 
   branchName = prMeta.headRefName
-  baseBranch = prMeta.baseRefName
+  baseBranch = flags.base || prMeta.baseRefName
   const headOwner = prMeta.headRepositoryOwner.login
   prUrl = prUrl || prMeta.url
   const isFork = headOwner !== owner
@@ -187,10 +172,12 @@ if (prNumber) {
   }
 
   baseBranch =
+    flags.base ||
     run(
       "git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'",
       { cwd: repoDir, allowFailure: true }
-    ) || 'master'
+    ) ||
+    'master'
 }
 
 // ---------------------------------------------------------------------------
@@ -257,8 +244,11 @@ log('Selecting subagents...')
 function parseDiffByFile(raw) {
   const result = {}
   for (const part of raw.split(/^diff --git /m).filter(Boolean)) {
-    const m = part.match(/a\/(.+?) b\//)
-    if (m) result[m[1]] = part
+    const m = part.match(/^a\/(.+?) b\/(.+)$/m)
+    if (m) {
+      result[m[1]] = part
+      result[m[2]] = part
+    }
   }
   return result
 }
