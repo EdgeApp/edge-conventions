@@ -169,73 +169,85 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 
 ## Dependency Graph
 
-Command → script dependencies and script → script cross-references.
+### Shared Resources
 
-### Commands → Scripts
-
-```
-/im ─────────────── lint-warnings.sh
-                     lint-commit.sh
-                     install-deps.sh
-                     verify-repo.sh
-                     asana-get-context.sh
-
-/pr-create ──────── pr-create.sh
-                     lint-commit.sh
-                     verify-repo.sh
-                     asana-attach-pr.sh ──→ asana-whoami.sh
-                     asana-get-context.sh
-
-/pr-address ─────── pr-address.sh
-                     lint-commit.sh
-
-/pr-review ──────── github-pr-review.sh
-
-/pr-land ────────── pr-land-discover.sh
-                     pr-land-comments.sh
-                     pr-land-prepare.sh ──→ edge-repo.js
-                     verify-repo.sh
-                     pr-land-merge.sh ────→ edge-repo.js
-                     pr-land-publish.sh ──→ edge-repo.js
-                     pr-land-extract-asana-task.sh
-                     asana-verification-needed.sh
-                     lint-commit.sh
-                     upgrade-dep.sh
-
-/dep-pr ─────────── asana-get-context.sh
-                     asana-create-dep-task.sh ──→ asana-whoami.sh
-
-/convention-sync ── convention-sync.sh
-
-/standup ────────── asana-standup.sh ──→ asana-whoami.sh
-                     github-pr-activity.sh
-
-/chat-audit ─────── cursor-chat-extract.js
-
-/task-review ────── asana-get-context.sh
-
-/changelog ──────── (no scripts)
-/q ──────────────── (no scripts)
-/author ─────────── (no scripts)
-```
-
-### Script → Script
+Scripts and commands used by multiple consumers. The number indicates how many direct dependents.
 
 ```
-asana-attach-pr.sh ────────→ asana-whoami.sh
-asana-create-dep-task.sh ──→ asana-whoami.sh
-asana-standup.sh ──────────→ asana-whoami.sh
-pr-watch.sh ───────────────→ pr-status-gql.sh | pr-status.sh
-pr-land-prepare.sh ────────→ edge-repo.js
-pr-land-merge.sh ──────────→ edge-repo.js
-pr-land-publish.sh ────────→ edge-repo.js
+SHARED SCRIPTS                         USED BY
+─────────────────────────────────────────────────────────────────
+lint-commit.sh              (4)  /im  /pr-create  /pr-address  /pr-land
+verify-repo.sh              (3)  /im  /pr-create  /pr-land
+asana-get-context.sh        (3)  /im  /pr-create  /dep-pr  (via /task-review)
+edge-repo.js                (3)  pr-land-prepare.sh  pr-land-merge.sh  pr-land-publish.sh
+asana-whoami.sh             (3)  asana-attach-pr.sh  asana-create-dep-task.sh  asana-standup.sh
+
+SHARED COMMANDS                        USED BY
+─────────────────────────────────────────────────────────────────
+/task-review                (2)  /im  /pr-create
 ```
 
-### Shared Modules
+### Command → Command
 
 ```
-edge-repo.js ──── Used by: pr-land-prepare.sh, pr-land-merge.sh, pr-land-publish.sh
-asana-whoami.sh ─ Used by: asana-attach-pr.sh, asana-create-dep-task.sh, asana-standup.sh
+/pr-create ──→ /im            (references im.md rules: lint, CHANGELOG, verify)
+             ──→ /task-review  (runs task-review for Asana context)
+             ──→ /pr-land      (next step reference)
+             ──→ /pr-address   (next step reference)
+
+/im ─────────→ /task-review    (runs task-review for Asana context)
+
+/dep-pr ─────→ /pr-create     (runs full pr-create workflow in dependent repo)
+
+/chat-audit ─→ /im            (analyzes chat against im.md rules)
+             ──→ /author       (suggest fixes via author skill)
+
+/pr-land ────→ /changelog     (CHANGELOG resolution during merge conflicts)
+```
+
+### Command → Script (full graph)
+
+```
+                        ┌─ lint-warnings.sh
+                        ├─ lint-commit.sh ·········· SHARED
+/im ────────────────────├─ install-deps.sh
+                        ├─ verify-repo.sh ·········· SHARED
+                        └─ asana-get-context.sh ···· SHARED
+
+                        ┌─ pr-create.sh
+                        ├─ lint-commit.sh ·········· SHARED
+/pr-create ─────────────├─ verify-repo.sh ·········· SHARED
+                        ├─ asana-attach-pr.sh ──→ asana-whoami.sh
+                        └─ asana-get-context.sh ···· SHARED
+
+                        ┌─ pr-address.sh
+/pr-address ────────────└─ lint-commit.sh ·········· SHARED
+
+/pr-review ─────────────── github-pr-review.sh
+
+                        ┌─ pr-land-discover.sh
+                        ├─ pr-land-comments.sh
+                        ├─ pr-land-prepare.sh ──→ edge-repo.js
+                        ├─ verify-repo.sh ·········· SHARED
+/pr-land ───────────────├─ pr-land-merge.sh ────→ edge-repo.js
+                        ├─ pr-land-publish.sh ──→ edge-repo.js
+                        ├─ pr-land-extract-asana-task.sh
+                        ├─ asana-verification-needed.sh
+                        ├─ lint-commit.sh ·········· SHARED
+                        └─ upgrade-dep.sh
+
+                        ┌─ asana-get-context.sh ···· SHARED
+/dep-pr ────────────────└─ asana-create-dep-task.sh ──→ asana-whoami.sh
+
+                        ┌─ asana-standup.sh ──→ asana-whoami.sh
+/standup ───────────────└─ github-pr-activity.sh
+
+/convention-sync ───────── convention-sync.sh
+/chat-audit ────────────── cursor-chat-extract.js
+/task-review ───────────── asana-get-context.sh ···· SHARED
+
+(standalone)            ┌─ pr-status-gql.sh
+pr-watch.sh ────────────└─ pr-status.sh
 ```
 
 ---
