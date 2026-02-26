@@ -1,16 +1,12 @@
 ---
 name: author
-description: Create, edit, revise, or debug Cursor commands (~/.cursor/commands/*.md) and skills (~/.cursor/skills/*/SKILL.md). Use when the user wants to make a new slash command, update an existing command, write a skill, fix a skill, or asks about .cursor/commands/ or .cursor/skills/ files. Also use when the user says "new command", "create command", "create skill", "edit command", "new skill", "update skill", "update command",or references SKILL.md. NOT for general markdown editing (READMEs, CHANGELOGs, docs, AGENTS.md).
+description: Create, edit, revise, or debug Cursor skills (~/.cursor/skills/*/SKILL.md). Use when the user wants to make a new skill, update an existing skill, fix a skill, or asks about .cursor/skills/ files. Also use when the user says "new command", "create command", "create skill", "edit command", "new skill", "update skill", "update command", or references SKILL.md. NOT for general markdown editing (READMEs, CHANGELOGs, docs, AGENTS.md).
 ---
 
 <goal>Write or revise Cursor commands and skills with maximum agent compliance.</goal>
 
 <commands-vs-skills>
-Commands (`~/.cursor/commands/*.md`): Invoked explicitly via `/command-name`. Deterministic — always fires when the user types the slash command. Can have `.sh` companion scripts.
-
-Skills (`~/.cursor/skills/*/SKILL.md`): Agent-triggered based on task matching against the description. Heuristic — not guaranteed to fire.
-
-Use a command when the user wants an explicit trigger. Use a skill when the behavior should activate automatically based on context.
+Skills (`~/.cursor/skills/*/SKILL.md`): The standard unit. Can be invoked explicitly via `/skill-name` or agent-triggered based on task matching against the description. Companion scripts live in `<skill>/scripts/`. Shared scripts live at `~/.cursor/skills/` top-level.
 </commands-vs-skills>
 
 <authoring-principles>
@@ -97,7 +93,7 @@ When revising an existing command, **every item below is mandatory** — not a s
    - Extract domain-specific verbs and nouns from the step being edited (e.g., a step about handling PR comments yields: `comment`, `reply`, `resolve`, `address`, `fixup`, `thread`)
    - Search each term across commands, skills, and rules:
    ```bash
-   rg -l "<term>" ~/.cursor/commands/*.md ~/.cursor/skills/*/SKILL.md ~/.cursor/rules/*.mdc
+   rg -l "<term>" ~/.cursor/skills/*/SKILL.md ~/.cursor/rules/*.mdc
    ```
    - Read any hits that share domain overlap and check for consistency
    - If overlap is found, evaluate whether to consolidate per the `dry` principle: can A reference B's rules or a shared file instead of reimplementing? Propose consolidation to the user when the shared logic is non-trivial.
@@ -111,7 +107,7 @@ When revising an existing command, **every item below is mandatory** — not a s
 </revision-checklist>
 
 <companion-scripts>
-Scripts go in `~/.cursor/commands/` alongside the `.md` file. Conventions:
+Skill-specific scripts go in `<skill>/scripts/`. Shared scripts go in `~/.cursor/skills/` top-level. Conventions:
 
 - `set -euo pipefail` at the top
 - Parse args with a `while/case` loop

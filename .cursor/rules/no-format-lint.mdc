@@ -6,6 +6,6 @@ alwaysApply: true
 # No Manual Formatting or Lint Fixing
 
 - Do NOT run `yarn lint`, `yarn fix`, `yarn verify`, or any lint/format shell commands unless explicitly asked.
-- Do NOT manually fix formatting issues (whitespace, quotes, semicolons, trailing commas, line length). "Auto Format on Agent Finish" handles this.
+- Do NOT manually fix formatting issues (whitespace, quotes, semicolons, trailing commas, line length). The `lint-commit.sh` script runs `eslint --fix` (including Prettier) before each commit.
 - Only use `ReadLints` to check for logical or type errors, not formatting. If the only lint errors are formatting-related, ignore them.
 - Focus tokens on correctness and logic, not style.

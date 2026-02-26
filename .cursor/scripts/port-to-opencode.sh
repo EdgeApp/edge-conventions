@@ -3,7 +3,7 @@
 # Single self-contained script (bash + inline node). No Python dependency.
 #
 # Usage:
-#   port-to-opencode.sh                    # Convert all rules, commands, skills
+#   port-to-opencode.sh                    # Convert all rules and skills
 #   port-to-opencode.sh --dry-run          # Show what would be done
 #   port-to-opencode.sh --validate         # Validate existing JSON mirrors
 #   port-to-opencode.sh file1.mdc file2.md # Convert specific files
@@ -160,10 +160,6 @@ function processFile(filePath) {
     outputDir = pathMod.join(OPENCODE_DIR, "rules")
     outputBase = pathMod.basename(filePath, ".mdc")
     converter = convertMdcToJson
-  } else if (filePath.includes("/commands/") && filePath.endsWith(".md")) {
-    outputDir = pathMod.join(OPENCODE_DIR, "commands")
-    outputBase = pathMod.basename(filePath, ".md")
-    converter = convertCommandToJson
   } else if (filePath.includes("/skills/") && pathMod.basename(filePath) === "SKILL.md") {
     outputDir = pathMod.join(OPENCODE_DIR, "skills", pathMod.basename(pathMod.dirname(filePath)))
     outputBase = "SKILL"
@@ -218,7 +214,6 @@ const files = inputFiles.length > 0
   ? inputFiles.map(f => f.startsWith("~") ? f.replace("~", os.homedir()) : f)
   : [
       ...walkDir(pathMod.join(CURSOR_DIR, "rules"), (fp, n) => n.endsWith(".mdc")),
-      ...walkDir(pathMod.join(CURSOR_DIR, "commands"), (fp, n) => n.endsWith(".md")),
       ...walkDir(pathMod.join(CURSOR_DIR, "skills"), (fp, n) => n === "SKILL.md")
     ]
 

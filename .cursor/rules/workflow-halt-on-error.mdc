@@ -25,8 +25,8 @@ Scan the user's message for `/word` tokens. A token is a **command invocation** 
 - `/word` is NOT inside a file path, URL, or code block
 
 When detected:
-1. Read `~/.cursor/commands/<word>.md` and follow it immediately.
-2. If the file does not exist, inform the user: "Command `/<word>` not found in `~/.cursor/commands/`."
+1. Read `~/.cursor/skills/<word>/SKILL.md` and follow it immediately.
+2. If the file does not exist, inform the user: "Skill `/<word>` not found in `~/.cursor/skills/`."
 
 **Ignore `/`** in: file paths (`/Users/...`, `~/...`), URLs (`https://...`), mid-word (`and/or`), backticks/code blocks.
 
