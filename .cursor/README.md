@@ -199,54 +199,59 @@ graph LR
 
 ### Full Dependency Graph
 
-Each script node appears once. Shared scripts are highlighted with bold borders.
+Left-to-right: commands → scripts → shared modules. Gold nodes are shared (3+ consumers).
 
 ```mermaid
-graph TD
+graph LR
   %% ── Commands ──
-  im["/im"]
-  pr-create["/pr-create"]
-  pr-address["/pr-address"]
-  pr-review["/pr-review"]
-  pr-land["/pr-land"]
-  dep-pr["/dep-pr"]
-  standup["/standup"]
-  conv-sync["/convention-sync"]
-  chat-audit["/chat-audit"]
-  task-review["/task-review"]
+  subgraph Commands
+    im["/im"]
+    pr-create["/pr-create"]
+    pr-address["/pr-address"]
+    pr-review["/pr-review"]
+    pr-land["/pr-land"]
+    dep-pr["/dep-pr"]
+    standup["/standup"]
+    conv-sync["/convention-sync"]
+    chat-audit["/chat-audit"]
+    task-review["/task-review"]
+  end
 
-  %% ── Shared scripts (3+ consumers) ──
-  lint-commit("lint-commit.sh"):::shared
-  verify-repo("verify-repo.sh"):::shared
-  asana-get-ctx("asana-get-context.sh"):::shared
-  edge-repo("edge-repo.js"):::shared
-  asana-whoami("asana-whoami.sh"):::shared
+  subgraph Scripts
+    lint-warn("lint-warnings.sh")
+    install-deps("install-deps.sh")
+    pr-create-sh("pr-create.sh")
+    pr-address-sh("pr-address.sh")
+    gh-pr-review("github-pr-review.sh")
+    pr-land-disc("pr-land-discover.sh")
+    pr-land-cmts("pr-land-comments.sh")
+    pr-land-prep("pr-land-prepare.sh")
+    pr-land-merge("pr-land-merge.sh")
+    pr-land-pub("pr-land-publish.sh")
+    pr-land-ext("pr-land-extract-asana-task.sh")
+    asana-verify("asana-verification-needed.sh")
+    upgrade-dep("upgrade-dep.sh")
+    asana-attach("asana-attach-pr.sh")
+    asana-dep("asana-create-dep-task.sh")
+    asana-standup("asana-standup.sh")
+    gh-pr-act("github-pr-activity.sh")
+    conv-sync-sh("convention-sync.sh")
+    chat-extract("cursor-chat-extract.js")
+  end
 
-  %% ── Per-command scripts ──
-  lint-warn("lint-warnings.sh")
-  install-deps("install-deps.sh")
-  pr-create-sh("pr-create.sh")
-  asana-attach("asana-attach-pr.sh")
-  pr-address-sh("pr-address.sh")
-  gh-pr-review("github-pr-review.sh")
-  pr-land-disc("pr-land-discover.sh")
-  pr-land-cmts("pr-land-comments.sh")
-  pr-land-prep("pr-land-prepare.sh")
-  pr-land-merge("pr-land-merge.sh")
-  pr-land-pub("pr-land-publish.sh")
-  pr-land-ext("pr-land-extract-asana-task.sh")
-  asana-verify("asana-verification-needed.sh")
-  upgrade-dep("upgrade-dep.sh")
-  asana-dep("asana-create-dep-task.sh")
-  asana-standup("asana-standup.sh")
-  gh-pr-act("github-pr-activity.sh")
-  conv-sync-sh("convention-sync.sh")
-  chat-extract("cursor-chat-extract.js")
+  subgraph Shared
+    lint-commit("lint-commit.sh"):::shared
+    verify-repo("verify-repo.sh"):::shared
+    asana-get-ctx("asana-get-context.sh"):::shared
+    edge-repo("edge-repo.js"):::shared
+    asana-whoami("asana-whoami.sh"):::shared
+  end
 
-  %% Standalone
-  pr-watch("pr-watch.sh")
-  pr-status-gql("pr-status-gql.sh")
-  pr-status("pr-status.sh")
+  subgraph Standalone
+    pr-watch("pr-watch.sh")
+    pr-status-gql("pr-status-gql.sh")
+    pr-status("pr-status.sh")
+  end
 
   %% ── /im ──
   im --> lint-warn
@@ -298,7 +303,7 @@ graph TD
   %% ── /task-review ──
   task-review --> asana-get-ctx
 
-  %% ── Script → Script ──
+  %% ── Script → Shared ──
   asana-attach --> asana-whoami
   asana-dep --> asana-whoami
   asana-standup --> asana-whoami
@@ -308,7 +313,6 @@ graph TD
   pr-watch --> pr-status-gql
   pr-watch --> pr-status
 
-  %% ── Styles ──
   classDef shared stroke-width:3px,stroke:#e6a817,fill:#fef3cd,color:#000
 ```
 
