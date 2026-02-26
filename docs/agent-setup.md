@@ -90,7 +90,7 @@ Review code changes for quality and convention compliance. Supports both GitHub 
 
 **Usage**: Provide a GitHub PR URL, PR number, local branch name, or "current branch".
 
-**Workflow**: Checkout code → Detect fork vs internal branch → Get diff → Launch review subagents in parallel (`review-react`, `review-errors`, `review-state`, `review-async`, `review-cleaners`, `review-code-quality`, `review-comments`, `review-strings`, `review-tests`, `review-pr`, `review-servers`, `review-repo`) → Compile findings into Critical Issues / Warnings / Suggestions → Save review to `/tmp` → For PRs: submit inline comments via GitHub
+**Workflow**: Checkout code → Detect fork vs internal branch → Get diff → Launch review subagents in parallel (`review-react`, `review-errors`, `review-state`, `review-async`, `review-cleaners`, `review-code-quality`, `review-comments`, `review-strings`, `review-tests`, `review-pr`, `review-servers`, `review-repo`, `review-performance`) → Compile findings into Critical Issues / Warnings / Suggestions → Save review to `/tmp` → For PRs: submit inline comments via GitHub
 
 ---
 

@@ -1,17 +1,17 @@
 ---
 name: debug-edge
-description: Compile, launch, and debug the Edge wallet app on an iOS simulator. Use when the user wants to build, run, debug, or test the Edge app on iOS, or needs to interact with the simulator UI.
+description: Compile, launch, and debug the Edge wallet app on an iOS simulator. Use when the user wants to build, run, debug, or test the Edge app on iOS, with Maestro for reliable UI navigation and interaction.
 ---
 
 # Debug Edge App on iOS Simulator
 
-This skill guides you through compiling, launching, and controlling the Edge wallet app on an iOS simulator using MCP tools.
+This skill guides you through compiling, launching, and controlling the Edge wallet app on an iOS simulator using MCP tools, with Maestro for reliable UI navigation and interaction.
 
 ## Prerequisites
 
 - Xcode installed with iOS simulators
 - Working directory: `edge-react-gui`
-- MCP servers available: `user-xcodebuild`, `user-mobile-mcp`
+- MCP servers available: `user-xcodebuild`, `user-maestro`
 - Artifact directory input: `ARTIFACTS_DIR` (when called from execute-plan, use `/tmp/YYYYMMDDTHHMM-<title>-Plan`)
 - Artifact naming rule: prefix all screenshots and videos with `YYYYMMDDTHHMM-`
 
@@ -140,12 +140,28 @@ Arguments: {}
 
 ### Enter PIN 1111
 
-Tap the "1" button four times using the label parameter:
+First, start or get a device ID for Maestro:
 
 ```
-MCP: user-xcodebuild
-Tool: tap
-Arguments: { "label": "1", "postDelay": 0.3 }
+MCP: user-maestro
+Tool: user-maestro-start_device
+Arguments: { "platform": "ios" }
+```
+
+Use Maestro to inspect the UI and tap the PIN buttons:
+
+```
+MCP: user-maestro
+Tool: user-maestro-inspect_view_hierarchy
+Arguments: { "device_id": "<device-id>" }
+```
+
+Find the PIN pad buttons (they should have text labels like "1", "2", etc.) and tap the "1" button four times:
+
+```
+MCP: user-maestro
+Tool: user-maestro-tap_on
+Arguments: { "device_id": "<device-id>", "text": "1", "use_fuzzy_matching": false }
 ```
 
 Repeat 4 times total for PIN "1111".
@@ -162,28 +178,22 @@ Arguments: { "stop": true }
 
 Record `VIDEO_PATH` in your execution summary.
 
-**Alternative using mobile-mcp**: If you need to use mobile-mcp instead:
+**Maestro fallback (if text matching fails):**
+
+Re-inspect the hierarchy and target the PIN key by `id` and/or `index`:
 
 ```
-MCP: user-mobile-mcp
-Tool: mobile_list_available_devices
-Arguments: { "noParams": {} }
+MCP: user-maestro
+Tool: user-maestro-inspect_view_hierarchy
+Arguments: { "device_id": "<device-id>" }
 ```
 
-Then list elements to find the "1" button coordinates:
+Then tap using a stricter selector:
 
 ```
-MCP: user-mobile-mcp
-Tool: mobile_list_elements_on_screen
-Arguments: { "device": "<device-id>" }
-```
-
-Then tap at those coordinates:
-
-```
-MCP: user-mobile-mcp
-Tool: mobile_click_on_screen_at_coordinates
-Arguments: { "device": "<device-id>", "x": <x>, "y": <y> }
+MCP: user-maestro
+Tool: user-maestro-tap_on
+Arguments: { "device_id": "<device-id>", "id": "<resource-id>", "index": 0, "use_fuzzy_matching": false }
 ```
 
 ## Debugging Tips
@@ -201,31 +211,6 @@ The following repositories execute inside a headless WebView within the app:
 - **edge-exchange-plugins** - Swap/exchange provider integrations
 - **edge-currency-plugins** - UTXO-based currency plugins (BTC, etc.)
 
-**Problem**: Regular `console.log` statements in these repos do NOT appear in the Metro bundler logs because the WebView has its own JavaScript context.
-
-**Solution**: Use the `log.warn()` method from the `EdgeLog` interface, which routes messages through edge-core-js back to edge-react-gui where they appear in Metro logs.
-
-**In currency engines** (edge-currency-accountbased, edge-currency-plugins):
-
-```typescript
-// Access via this.log on engine classes
-this.log.warn('Debug message', someData)
-```
-
-**In exchange plugins** (edge-exchange-plugins):
-
-```typescript
-// log is passed to the plugin function
-log.warn('Debug message', someData)
-```
-
-**Available log methods**:
-- `log('message')` - Info level (may be filtered out)
-- `log.warn('message')` - Warning level (recommended for debugging)
-- `log.error('message')` - Error level
-
-Using `log.warn()` ensures messages appear in Metro logs regardless of log level filtering.
-
 **Note**: Both React Native and WebView code have full access to `fetch` from localhost. Any instrumentation or debugging tools that rely on fetch will work normally.
 
 ### Running Debug Servers for Plugin Repos
@@ -236,12 +221,13 @@ For live debugging with hot-reload, run a debug server for the plugin repository
 
 Edit `edge-react-gui/env.json` and set the appropriate flag to `true`:
 
-| Repository | env.json Flag |
-|------------|---------------|
-| edge-core-js | `DEBUG_CORE` |
-| edge-currency-accountbased | `DEBUG_ACCOUNTBASED` |
-| edge-exchange-plugins | `DEBUG_EXCHANGES` |
-| edge-currency-plugins | `DEBUG_CURRENCY_PLUGINS` |
+| Repository | env.json Flag | Additional Steps |
+|------------|---------------|------------------|
+| edge-core-js | `DEBUG_CORE` | |
+| edge-currency-accountbased | `DEBUG_ACCOUNTBASED` | |
+| edge-exchange-plugins | `DEBUG_EXCHANGES` | |
+| edge-currency-plugins | `DEBUG_CURRENCY_PLUGINS` | |
+| edge-currency-monero | `DEBUG_PLUGINS` | Run `yarn updot edge-currency-monero` and `yarn start.plugins` in GUI |
 
 **Step 2: Start the debug server**
 
@@ -272,6 +258,14 @@ After changing `env.json`, rebuild edge-react-gui to pick up the new debug flags
 4. Rebuild and launch the app
 5. Changes to edge-exchange-plugins will hot-reload
 
+**Example: Debugging currency plugins (like Monero)**
+
+1. Set `"DEBUG_PLUGINS": true` in `edge-react-gui/env.json`
+2. In terminal 1: `cd edge-react-gui && yarn updot edge-currency-monero && yarn start.plugins`
+3. In terminal 2: `cd edge-react-gui && yarn start`
+4. Rebuild and launch the app
+5. Changes to edge-currency-monero will hot-reload
+
 ### View Native Logs
 
 Use Xcode MCP to capture native iOS logs:
@@ -286,9 +280,9 @@ Tool: start_sim_log_cap
 When you need a screenshot during debugging:
 
 ```
-MCP: user-xcodebuild
-Tool: screenshot
-Arguments: { "returnFormat": "path" }
+MCP: user-maestro
+Tool: user-maestro-take_screenshot
+Arguments: { "device_id": "<device-id>" }
 ```
 
 Then copy or move it into `ARTIFACTS_DIR` with required prefix:
@@ -311,9 +305,9 @@ Every screenshot filename must start with `YYYYMMDDTHHMM-`.
 To type into focused text fields:
 
 ```
-MCP: user-xcodebuild
-Tool: type_text
-Arguments: { "text": "your text here" }
+MCP: user-maestro
+Tool: user-maestro-input_text
+Arguments: { "device_id": "<device-id>", "text": "your text here" }
 ```
 
 ## Step 8: Stop Recording and Report Artifacts
