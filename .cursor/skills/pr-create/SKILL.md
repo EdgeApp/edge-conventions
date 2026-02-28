@@ -9,7 +9,7 @@ metadata:
 <goal>End-to-end flow: resolve an Asana task, implement it (or continue from a prior `/im` run), then create a PR with Asana linking and assignment.</goal>
 
 <rules description="Non-negotiable constraints.">
-<rule id="use-companion-script">Do NOT call `gh` or `curl` directly. Use `scripts/pr-create.sh` for PR creation (it uses `gh` internally).</rule>
+<rule id="use-companion-script">Do NOT call `gh` or `curl` directly. Use `~/.cursor/skills/pr-create/scripts/pr-create.sh` for PR creation (it uses `gh` internally).</rule>
 <rule id="no-script-bypass">If a companion script fails, report the error and STOP. Do NOT fall back to raw `gh`, `curl`, or other workarounds.</rule>
 <rule id="gh-auth-required">If any script exits code 2 with `PROMPT_GH_AUTH`, prompt the user to run `gh auth login` and STOP.</rule>
 <rule id="commit-script">Always commit using `~/.cursor/skills/lint-commit.sh -m "message" [files...]`. Never use raw `git add` + `git commit`.</rule>
@@ -178,7 +178,7 @@ Create the PR immediately — do not ask for confirmation.
    - The Write tool **overwrites** the file. ApplyPatch `Add File` may append to an existing file, causing stale content from a prior PR to bleed through. **Always use Write.**
 2. **Run the script**:
    ```bash
-   scripts/pr-create.sh --title "<title>" --body-file /tmp/pr-body.md --asana-task <task_gid>
+   ~/.cursor/skills/pr-create/scripts/pr-create.sh --title "<title>" --body-file /tmp/pr-body.md --asana-task <task_gid>
    ```
    - Pass `--asana-task <task_gid>` when an Asana task is available. The script injects a clickable Asana link into the PR body if one isn't already present. This is **required** for downstream `/pr-land` to extract the task GID.
    - The script cleans up `/tmp/pr-body.md` after use to prevent cross-PR contamination. It will be re-populated from GitHub if needed during `/pr-address`.
@@ -192,7 +192,7 @@ If the script exits code 2 with `PROMPT_GH_AUTH`, prompt the user to run `gh aut
 If no Asana link was provided, skip silently.
 
 ```bash
-scripts/asana-attach-pr.sh \
+~/.cursor/skills/pr-create/scripts/asana-attach-pr.sh \
   --task <task_gid> \
   --pr-url <pr_url> \
   --pr-title "<title>" \
@@ -211,7 +211,7 @@ By default, the script only attaches — no assignment or status change.
 With `--assign`, the script exits code 2 and outputs `PROMPT_REVIEWER` if the Reviewer field is empty. Ask the user who to assign using the team roster, then re-run with the override:
 
 ```bash
-scripts/asana-attach-pr.sh \
+~/.cursor/skills/pr-create/scripts/asana-attach-pr.sh \
   --task <task_gid> --pr-url <pr_url> --pr-title "<title>" --pr-number <number> \
   --assign --reviewer <user_gid>
 ```

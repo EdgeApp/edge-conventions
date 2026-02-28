@@ -13,7 +13,7 @@ metadata:
 <rule id="check-existence">Always check if a dependent task already exists before creating one. The script handles this — respect the `CREATED: false` output.</rule>
 <rule id="script-timeouts">Asana scripts can take up to 90s. Always set `block_until_ms: 120000`.</rule>
 <rule id="no-impl-before-task">Do NOT begin implementation until the dependent task is created and linked.</rule>
-<rule id="same-project">The dependent task MUST be created in the same non-version project(s) as the parent task. The script handles this automatically — it copies all non-version project memberships from the parent.</rule>
+<rule id="same-project">The dependent task MUST be created in the same project(s) as the parent task, including release-version project tags (for example `4.46.0`). The script handles this automatically by copying all parent project memberships.</rule>
 <rule id="initial-assignee">The dependent task is automatically assigned to the current user (resolved via `asana-whoami.sh`). Do NOT hardcode a user GID — omit `--assignee` to let the script auto-resolve.</rule>
 </rules>
 
@@ -66,7 +66,7 @@ Derive the dependent task name from the parent: `<target-prefix>: <parent task n
 If the parent task name already has a prefix (e.g. `gui: Some feature`), strip it and replace with the target prefix. If no prefix, prepend the target prefix.
 
 ```bash
-scripts/asana-create-dep-task.sh \
+~/.cursor/skills/dep-pr/scripts/asana-create-dep-task.sh \
   --parent <parent_gid> \
   --name "<prefix>: <task name>" \
   --notes "<description referencing parent task>"
@@ -74,8 +74,8 @@ scripts/asana-create-dep-task.sh \
 
 The script:
 - Checks if a matching dependency already exists (by name) — if so, outputs `CREATED: false` and the existing GID
-- Creates the task in the parent's non-version project(s)
-- Copies priority and status from the parent
+- Creates the task in all parent project memberships (including release-version tags)
+- Copies priority, status, and `Planned` from the parent
 - Assigns to the current user (auto-resolved via `asana-whoami.sh`)
 - Sets the new task as a blocking dependency of the parent
 

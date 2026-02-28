@@ -113,6 +113,26 @@ done
 
 total=$(echo "$new_json $mod_json $del_json" | jq -s '.[0] + .[1] + .[2] | length')
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# Ensure ~/.claude/skills symlink points to ~/.cursor/skills
+CLAUDE_SKILLS="$HOME/.claude/skills"
+if [[ -L "$CLAUDE_SKILLS" ]]; then
+  link_target="$(readlink "$CLAUDE_SKILLS")"
+  if [[ "$link_target" != "$USER_DIR/skills" ]]; then
+    rm "$CLAUDE_SKILLS"
+    ln -s "$USER_DIR/skills" "$CLAUDE_SKILLS"
+  fi
+elif [[ ! -e "$CLAUDE_SKILLS" ]]; then
+  mkdir -p "$(dirname "$CLAUDE_SKILLS")"
+  ln -s "$USER_DIR/skills" "$CLAUDE_SKILLS"
+fi
+
+# Regenerate ~/.claude/CLAUDE.md from alwaysApply rules
+if [[ -x "$SCRIPT_DIR/generate-claude-md.sh" ]]; then
+  "$SCRIPT_DIR/generate-claude-md.sh" >/dev/null
+fi
+
 if [[ "$DO_STAGE" == true && "$total" -gt 0 ]]; then
   all_copy=$(echo "$new_json $mod_json" | jq -sr '.[0] + .[1] | .[]')
   all_del=$(echo "$del_json" | jq -r '.[]')

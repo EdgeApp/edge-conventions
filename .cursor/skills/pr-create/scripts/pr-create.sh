@@ -39,7 +39,8 @@ requireGh();
 
 // Detect repo info from git
 const remoteUrl = git("remote get-url origin");
-const match = remoteUrl.match(/[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
+const normalizedRemoteUrl = remoteUrl.replace(/\/+$/, "");
+const match = normalizedRemoteUrl.match(/[:/]([^/]+)\/([^/.]+?)(?:\.git)?$/);
 if (!match) {
   console.error("ERROR: Could not parse owner/repo from remote:", remoteUrl);
   process.exit(1);
@@ -94,6 +95,18 @@ if (!title) {
 // Read body from file if provided
 let body = bodyFile ? fs.readFileSync(bodyFile, "utf8") : null;
 
+function countOccurrences(haystack, needle) {
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = haystack.match(new RegExp(escaped, "g"));
+  return matches == null ? 0 : matches.length;
+}
+
+function countOccurrences(haystack, needle) {
+  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = haystack.match(new RegExp(escaped, "g"));
+  return matches == null ? 0 : matches.length;
+}
+
 // Build body from template if not provided
 if (!body) {
   const isGui = repo === "edge-react-gui";
@@ -139,6 +152,45 @@ if (!body) {
       `- [ ] Tested on small-screen device (iPod Touch)\n` +
       `- [ ] Tested on large-screen device (tablet)`;
   }
+}
+
+// Guardrail: fail fast if the body appears to include duplicate templates.
+// This prevents accidental append/concatenation from creating malformed PR descriptions.
+const templateSectionCounts = {
+  changelog: countOccurrences(body, "### CHANGELOG"),
+  dependencies: countOccurrences(body, "### Dependencies"),
+  description: countOccurrences(body, "### Description")
+};
+if (
+  templateSectionCounts.changelog > 1 ||
+  templateSectionCounts.dependencies > 1 ||
+  templateSectionCounts.description > 1
+) {
+  console.error(
+    "ERROR: PR body contains duplicated template sections. Regenerate /tmp/pr-body.md and retry."
+  );
+  console.error(JSON.stringify(templateSectionCounts));
+  process.exit(1);
+}
+
+// Guardrail: fail fast on duplicated PR template sections.
+// This catches stale/concatenated body files before creating malformed PRs.
+const sectionCounts = {
+  changelog: countOccurrences(body, "### CHANGELOG"),
+  dependencies: countOccurrences(body, "### Dependencies"),
+  description: countOccurrences(body, "### Description"),
+};
+if (
+  sectionCounts.changelog > 1 ||
+  sectionCounts.dependencies > 1 ||
+  sectionCounts.description > 1
+) {
+  console.error(
+    "ERROR: PR body appears to contain duplicated template sections. " +
+      "Regenerate the body file and retry."
+  );
+  console.error(JSON.stringify(sectionCounts));
+  process.exit(1);
 }
 
 // Inject Asana link if provided and not already present

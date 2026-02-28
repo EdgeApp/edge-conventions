@@ -16,7 +16,7 @@
 #   TASK_URL: <url>
 #   CREATED: true|false (false if task already existed)
 #   ASSIGNED_TO: <user_gid>
-#   FIELDS_SET: priority=<val>, status=<val>, reviewer=<name>, implementor=<name>
+#   FIELDS_SET: priority=<val>, status=<val>, planned=<val>, reviewer=<name>, implementor=<name>
 #   DEPENDENCY_SET: <new_gid> blocks <parent_gid>
 #
 # Exit codes: 0 = success, 1 = error
@@ -84,22 +84,23 @@ fi
 parent_info=$(curl -s "$API/tasks/$PARENT_GID?opt_fields=workspace.gid,memberships.project.gid,memberships.project.name,custom_fields.gid,custom_fields.enum_value.gid,custom_fields.enum_value.name,custom_fields.people_value.gid,custom_fields.people_value.name" \
   -H "$AUTH")
 
-read -r WORKSPACE_GID PROJECT_GIDS PRIORITY_INFO STATUS_INFO REVIEWER_INFO < <(echo "$parent_info" | python3 -c "
+read -r WORKSPACE_GID PROJECT_GIDS PRIORITY_INFO STATUS_INFO PLANNED_INFO REVIEWER_INFO < <(echo "$parent_info" | python3 -c "
 import sys, json, re
 data = json.load(sys.stdin)['data']
 ws = data.get('workspace', {}).get('gid', '')
 
-# Collect all non-version projects (board/backlog projects, not release milestones)
+# Collect all parent projects (including release-version projects like 4.46.0)
 projects = []
 for m in data.get('memberships', []):
     p = m.get('project', {})
-    if not re.match(r'^\d+\.\d+\.\d+$', p.get('name', '')):
-        projects.append(p.get('gid', ''))
+    gid = p.get('gid', '')
+    if gid:
+        projects.append(gid)
 if not projects and data.get('memberships'):
     projects.append(data['memberships'][0]['project']['gid'])
 proj_str = ','.join(projects)
 
-# Field GIDs
+# Field GIDs (stable known fields)
 ENUM_FIELDS = {
     '795866930204488': 'priority',
     '1190660107346181': 'status',
@@ -116,6 +117,13 @@ for f in data.get('custom_fields', []):
     if fgid in ENUM_FIELDS and f.get('enum_value'):
         label = ENUM_FIELDS[fgid]
         enum_results[label] = (fgid, f['enum_value']['gid'], f['enum_value'].get('name', ''))
+    # "Planned" is workspace-specific, so detect by field name:
+    if f.get('name') == 'Planned' and f.get('enum_value'):
+        enum_results['planned'] = (
+            fgid,
+            f['enum_value']['gid'],
+            f['enum_value'].get('name', '')
+        )
     if fgid in PEOPLE_FIELDS:
         label = PEOPLE_FIELDS[fgid]
         pv = f.get('people_value', [])
@@ -132,7 +140,7 @@ def fmt_people(key):
         return ':'.join(people_results[key])
     return '::'
 
-print(f\"{ws} {proj_str} {fmt_enum('priority')} {fmt_enum('status')} {fmt_people('reviewer')}\")
+print(f\"{ws} {proj_str} {fmt_enum('priority')} {fmt_enum('status')} {fmt_enum('planned')} {fmt_people('reviewer')}\")
 ")
 
 PRIORITY_FIELD=$(echo "$PRIORITY_INFO" | cut -d: -f1)
@@ -141,6 +149,9 @@ PRIORITY_NAME=$(echo "$PRIORITY_INFO" | cut -d: -f3)
 STATUS_FIELD=$(echo "$STATUS_INFO" | cut -d: -f1)
 STATUS_ENUM=$(echo "$STATUS_INFO" | cut -d: -f2)
 STATUS_NAME=$(echo "$STATUS_INFO" | cut -d: -f3)
+PLANNED_FIELD=$(echo "$PLANNED_INFO" | cut -d: -f1)
+PLANNED_ENUM=$(echo "$PLANNED_INFO" | cut -d: -f2)
+PLANNED_NAME=$(echo "$PLANNED_INFO" | cut -d: -f3)
 REVIEWER_FIELD=$(echo "$REVIEWER_INFO" | cut -d: -f1)
 REVIEWER_GID=$(echo "$REVIEWER_INFO" | cut -d: -f2)
 REVIEWER_NAME=$(echo "$REVIEWER_INFO" | cut -d: -f3)
@@ -159,8 +170,10 @@ import json
 cf = {}
 pf, pe = '$PRIORITY_FIELD', '$PRIORITY_ENUM'
 sf, se = '$STATUS_FIELD', '$STATUS_ENUM'
+plf, ple = '$PLANNED_FIELD', '$PLANNED_ENUM'
 if pf and pe: cf[pf] = pe
 if sf and se: cf[sf] = se
+if plf and ple: cf[plf] = ple
 print(json.dumps(cf))
 ")
 
@@ -241,6 +254,7 @@ echo "DEPENDENCY_SET: $NEW_GID blocks $PARENT_GID"
 fields_msg=""
 [[ -n "$PRIORITY_NAME" ]] && fields_msg="priority=$PRIORITY_NAME"
 [[ -n "$STATUS_NAME" ]] && fields_msg="${fields_msg:+$fields_msg, }status=$STATUS_NAME"
+[[ -n "$PLANNED_NAME" ]] && fields_msg="${fields_msg:+$fields_msg, }planned=$PLANNED_NAME"
 [[ -n "$REVIEWER_NAME" ]] && fields_msg="${fields_msg:+$fields_msg, }reviewer=$REVIEWER_NAME"
 [[ -n "$IMPLEMENTOR_GID" ]] && fields_msg="${fields_msg:+$fields_msg, }implementor=$IMPLEMENTOR_NAME"
 [[ -n "$fields_msg" ]] && echo "FIELDS_SET: $fields_msg"

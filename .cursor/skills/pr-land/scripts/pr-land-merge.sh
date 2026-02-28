@@ -328,7 +328,9 @@ async function main() {
 
     // STEP 3: Run local verification (MANDATORY — no bypass)
     console.error("Running local verification (MANDATORY)...");
-    const verification = runVerification(repoDir, getUpstreamBranch(repo));
+    const verification = runVerification(repoDir, getUpstreamBranch(repo), {
+      skipInstall: true,
+    });
 
     if (!verification.success) {
       console.error("\n=== STOP: Verification failed ===");

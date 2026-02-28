@@ -160,7 +160,9 @@ async function prepareBranch(repo, branch) {
 
   // Step 6: Run verification (lint scoped to files changed vs upstream)
   console.error("\nRunning verification...");
-  const verifyResult = runVerification(repoDir, upstream);
+  const verifyResult = runVerification(repoDir, upstream, {
+    skipInstall: true,
+  });
 
   if (!verifyResult.success) {
     console.error("Branch state:");

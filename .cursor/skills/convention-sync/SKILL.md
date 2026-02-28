@@ -6,13 +6,14 @@ metadata:
   author: j0ntz
 ---
 
-<goal>Sync cursor files between `~/.cursor/` and the `edge-conventions` repo, commit, push, and update PR description from README.</goal>
+<goal>Sync cursor files between `~/.cursor/` and the `edge-conventions` repo, commit, push, and update PR description from README. Also maintains cross-tool compatibility: symlinks `~/.claude/skills` → `~/.cursor/skills` and generates `~/.claude/CLAUDE.md` from always-apply rules.</goal>
 
 <rules>
 <rule id="use-companion-script">Use `scripts/convention-sync.sh` for diffing and syncing. Do NOT manually diff or copy files.</rule>
 <rule id="dry-run-first">Always run without `--stage` first to show the summary. Only stage/commit after user confirms.</rule>
 <rule id="no-script-bypass">If the script fails, report the error and STOP.</rule>
 <rule id="readme-is-source">`.cursor/README.md` is the source of truth for documentation. The script mirrors it to the PR description automatically.</rule>
+<rule id="claude-compat">Every run ensures `~/.claude/skills` symlinks to `~/.cursor/skills` and regenerates `~/.claude/CLAUDE.md` from `alwaysApply: true` rules. This enables OpenCode and Claude Code to discover skills and rules without separate config.</rule>
 </rules>
 
 <step id="1" name="Detect changes and PR status">

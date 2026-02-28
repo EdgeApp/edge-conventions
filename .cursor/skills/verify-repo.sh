@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 // verify-repo.sh
 // Runs full verification: CHANGELOG + code verification (prepare, tsc, lint, test)
-// Usage: ./verify-repo.sh [repo-dir] [--base <upstream-ref>]
+// Usage: ./verify-repo.sh [repo-dir] [--base <upstream-ref>] [--skip-install]
 // If repo-dir not provided, uses current directory
 // If --base is provided, lint is scoped to files changed vs that ref
+// If --skip-install is provided, skips the initial `yarn` dependency install
 //
 // Exit codes:
 //   0 = All verification passed
@@ -19,12 +20,15 @@ const os = require("os");
 let repoDir = process.cwd();
 let baseRef = null;
 let requireChangelog = false;
+let skipInstall = false;
 const args = process.argv.slice(2);
 for (let i = 0; i < args.length; i++) {
   if (args[i] === "--base" && i + 1 < args.length) {
     baseRef = args[++i];
   } else if (args[i] === "--require-changelog") {
     requireChangelog = true;
+  } else if (args[i] === "--skip-install") {
+    skipInstall = true;
   } else if (!args[i].startsWith("--")) {
     repoDir = args[i];
   }
@@ -227,6 +231,22 @@ function verifyCode() {
 
   console.log("");
   console.log("Code verification:");
+
+  if (!skipInstall) {
+    console.log("▶  yarn...");
+    const installResult = runCommandWithLog("yarn", "yarn-install", repoDir);
+    if (!installResult.success) {
+      console.error(`✗  yarn - FAILED (log: ${installResult.logPath})\n`);
+      return {
+        success: false,
+        failedStep: "yarn",
+        logPath: installResult.logPath,
+      };
+    }
+    console.log("✓  yarn - passed\n");
+  } else {
+    console.log("⏭  yarn - skipped (--skip-install)");
+  }
 
   for (const cmd of commands) {
     if (scripts[cmd] == null) {
