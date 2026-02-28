@@ -10,7 +10,7 @@ metadata:
 
 <rules description="Non-negotiable constraints.">
 <rule id="read-coding-standards">Before writing ANY code, read `.cursor/rules/typescript-standards.mdc` and follow all rules and standards in it throughout the implementation.</rule>
-<rule id="no-impl-before-confirm">When an Asana task is provided, do NOT begin implementation until the user confirms the task summary (Step 0).</rule>
+<rule id="no-impl-before-confirm">Do NOT begin implementation until the user confirms the `/asana-plan` output (Step 0).</rule>
 <rule id="lint-before-change">Before the first edit to ANY file, run `scripts/lint-warnings.sh <files...>` to check for warnings AND load matching fix patterns into context. If warnings exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This applies to every file you touch, including ones discovered mid-implementation — not just the files you planned upfront.</rule>
 <rule id="no-manual-formatting">Do not manually fix formatting. `lint-commit.sh` runs `eslint --fix` (which includes Prettier) before committing. If you see a formatting lint after editing, do NOT make another edit to fix it.</rule>
 <rule id="commit-script">Always commit using `~/.cursor/skills/lint-commit.sh -m "message" [files...]` or `--fixup <hash>` for fixup commits.</rule>
@@ -19,10 +19,13 @@ metadata:
 <rule id="script-timeouts">`asana-get-context.sh` can take up to 90s. Always set `block_until_ms: 120000` when invoking it to avoid unnecessary backgrounding and polling.</rule>
 </rules>
 
-<step id="0" name="Task review (if Asana link provided)">
-If an Asana task link is provided, **read `~/.cursor/skills/task-review/SKILL.md` now** (use the Read tool — do NOT skip this) and follow all 4 steps including confirmation. It fetches task context, downloads and processes attachments (text files, PDFs, ZIPs, images), determines the target repo, presents a summary, surfaces questions, and **waits for user confirmation before any implementation begins**.
+<step id="0" name="Planning handoff via /asana-plan">
+Always delegate planning to `~/.cursor/skills/asana-plan/SKILL.md` first:
 
-If no Asana link is provided, skip this step.
+- If user provided an Asana URL, run `/asana-plan` in Asana mode.
+- If user provided ad-hoc text or file references, run `/asana-plan` in text/file mode.
+
+`/asana-plan` returns a plan file path + short execution summary and waits for user confirmation. Start implementation only after that confirmation.
 
 ### Regression analysis
 

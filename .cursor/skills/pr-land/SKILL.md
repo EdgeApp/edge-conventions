@@ -42,7 +42,7 @@ metadata:
 | `verify-repo.sh` | Verification (CHANGELOG + code; lint scoped to changed files when `--base` given) |
 | `pr-land-merge.sh` | Rebase + verify + merge via GitHub API |
 | `pr-land-publish.sh` | Version bump, changelog update, commit + tag (no push) |
-| `asana-verification-needed.sh` | Update linked Asana tasks after merge |
+| `asana-task-update.sh` | Update linked Asana tasks after merge |
 
 | Script | Exit 0 | Exit 1 | Exit 2 | Exit 3 | Exit 4 |
 |--------|--------|--------|--------|--------|--------|
@@ -52,7 +52,7 @@ metadata:
 | `verify-repo.sh` | Pass | Code fail | CHANGELOG fail | - | - |
 | `pr-land-merge.sh` | Merged | Verify fail | - | - | CHANGELOG conflict |
 | `pr-land-publish.sh` | Ready (needs push) | Verify fail | No unreleased | - | - |
-| `asana-verification-needed.sh` | All updated | Partial failure | Missing ASANA_TOKEN/input | - | - |
+| `asana-task-update.sh` | Success | Error | Needs user input | - | - |
 
 **Any exit code not in this table = STOP immediately and report to user.**
 </scripts>
@@ -225,18 +225,21 @@ Review the `missing` array, report any entries lacking an Asana link, and skip t
 </sub-step>
 
 <sub-step name="Update tasks">
-Feed the `tasks` array into the Asana script:
+For each task in `.tasks`, run:
 
 ```bash
-jq '.tasks' /tmp/asana.json | scripts/asana-verification-needed.sh
+~/.cursor/skills/asana-task-update/scripts/asana-task-update.sh \
+  --task <task_gid> \
+  --set-status "Verification Needed" \
+  --unassign
 ```
 
-The script validates status is "Publish Needed", unsets the assignee, and sets status to "Verification Needed".
+This replaces the old dedicated verification updater behavior.
 
-**Exit codes:**
-- `0` = All updated
-- `1` = One or more failed (see JSON output)
-- `2` = Missing `ASANA_TOKEN` or invalid input
+**Exit codes per call:**
+- `0` = success
+- `1` = error
+- `2` = needs user input
 </sub-step>
 </step>
 

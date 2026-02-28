@@ -97,14 +97,36 @@ When revising an existing command, **every item below is mandatory** — not a s
    ```
    - Read any hits that share domain overlap and check for consistency
    - If overlap is found, evaluate whether to consolidate per the `dry` principle: can A reference B's rules or a shared file instead of reimplementing? Propose consolidation to the user when the shared logic is non-trivial.
-4. Verify step ordering matches the agent's decision flow
-5. Ensure examples are brief and generic (no real repo names, PR numbers, or user data)
-6. Check that escape hatches exist for ambiguous cases
-7. Confirm companion scripts match the `.md` expectations
-8. Convert markdown-structured commands to XML format (this is the most commonly skipped item — `##` headers and bullet lists must become `<goal>`, `<rules>`, `<step>` tags)
-9. Apply all current authoring principles (rules-first, scripts-over-reasoning, batch-tool-calls, etc.) even if the original command predates them
-10. If the command may run on smaller/faster models, apply `<small-model-conventions>` — especially `file-over-args`, `inline-guardrails`, and `verbatim-bash`
+4. **Check dependent callers before any script/command change**: Before adding, updating, renaming, or removing any command, skill, script, step ID, flag, or output contract, search for direct callers/references and update them in the same change.
+   - Search by skill name, script filename, flag names, and any removed/renamed identifiers:
+   ```bash
+   rg -n "<identifier>" ~/.cursor/skills ~/.cursor/rules
+   ```
+   - Do not add/update/remove script behavior until caller impacts are audited and required updates are planned.
+   - Do not delete or rename a referenced target until all callers are updated.
+   - In the final response, list which callers were updated.
+5. Verify step ordering matches the agent's decision flow
+6. Ensure examples are brief and generic (no real repo names, PR numbers, or user data)
+7. Check that escape hatches exist for ambiguous cases
+8. Confirm companion scripts match the `.md` expectations
+9. Convert markdown-structured commands to XML format (this is the most commonly skipped item — `##` headers and bullet lists must become `<goal>`, `<rules>`, `<step>` tags)
+10. Apply all current authoring principles (rules-first, scripts-over-reasoning, batch-tool-calls, etc.) even if the original command predates them
+11. If the command may run on smaller/faster models, apply `<small-model-conventions>` — especially `file-over-args`, `inline-guardrails`, and `verbatim-bash`
 </revision-checklist>
+
+<post-authoring-actions>
+After any authoring change (skills/scripts/rules), ask:
+
+> Run `/convention-sync` to sync files and update PR conventions/description?
+
+When `.cursor/rules/*.mdc` files changed, run:
+
+```bash
+~/.cursor/skills/convention-sync/scripts/generate-claude-md.sh
+```
+
+This keeps `~/.claude/CLAUDE.md` aligned with always-apply rules via the existing convention-sync flow.
+</post-authoring-actions>
 
 <companion-scripts>
 Skill-specific scripts go in `<skill>/scripts/`. Shared scripts go in `~/.cursor/skills/` top-level. Conventions:
@@ -115,7 +137,7 @@ Skill-specific scripts go in `<skill>/scripts/`. Shared scripts go in `~/.cursor
 - Exit code 0 = success, 1 = error, 2 = needs user input
 - **Naming**: Name scripts by what they DO, not which command they serve. Scripts will likely be reused by multiple commands. Prefer descriptive, domain-scoped names over command-coupled names:
   - `lint-commit.sh` — good (describes the operation)
-  - `asana-attach-pr.sh` — good (describes the operation)
+  - `asana-task-update.sh` — good (describes the operation)
   - `github-pr-comments.sh` — good (describes the domain + operation)
   - `pr-address.sh` — bad (coupled to the `/pr-address` command name)
 - Before creating a new script, check if an existing script already covers the operation. Extend it with a new subcommand rather than creating a duplicate.

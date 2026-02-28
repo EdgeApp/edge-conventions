@@ -164,19 +164,6 @@ IMPLEMENTOR_NAME="current user"
 # Phase 3: Create the task
 NOTES_JSON=$(python3 -c "import json; print(json.dumps('''$TASK_NOTES'''))")
 
-# Build enum custom fields for task creation (people fields set separately after)
-custom_fields_json=$(python3 -c "
-import json
-cf = {}
-pf, pe = '$PRIORITY_FIELD', '$PRIORITY_ENUM'
-sf, se = '$STATUS_FIELD', '$STATUS_ENUM'
-plf, ple = '$PLANNED_FIELD', '$PLANNED_ENUM'
-if pf and pe: cf[pf] = pe
-if sf and se: cf[sf] = se
-if plf and ple: cf[plf] = ple
-print(json.dumps(cf))
-")
-
 # Build projects list from comma-separated GIDs
 IFS=',' read -ra PROJECT_ARR <<< "$PROJECT_GIDS"
 
@@ -192,8 +179,7 @@ data = {
         'name': '''$TASK_NAME''',
         'notes': $NOTES_JSON,
         'projects': [p for p in projects if p],
-        'workspace': '$WORKSPACE_GID',
-        'custom_fields': $custom_fields_json
+        'workspace': '$WORKSPACE_GID'
     }
 }
 if assignee:
@@ -215,26 +201,25 @@ if [[ -z "$NEW_GID" || "$NEW_GID" == "ERROR"* ]]; then
   exit 1
 fi
 
-# Phase 3b: Set people fields (reviewer, implementor) via separate PUT
-# People fields use array format: {"field_gid": ["user_gid"]}
-people_fields_json=$(python3 -c "
-import json
-cf = {}
-rf, rg = '$REVIEWER_FIELD', '$REVIEWER_GID'
-imf, img = '$IMPLEMENTOR_FIELD', '$IMPLEMENTOR_GID'
-if rf and rg: cf[rf] = [rg]
-if imf and img: cf[imf] = [img]
-if cf:
-    print(json.dumps({'data': {'custom_fields': cf}}))
-else:
-    print('')
-")
-
-if [[ -n "$people_fields_json" ]]; then
-  curl -s -X PUT "$API/tasks/$NEW_GID" \
-    -H "$AUTH" \
-    -H "Content-Type: application/json" \
-    -d "$people_fields_json" > /dev/null 2>&1 || true
+# Phase 3b: Set copied fields via shared updater script
+UPDATE_CMD=("$SCRIPT_DIR/../../asana-task-update/scripts/asana-task-update.sh" "--task" "$NEW_GID")
+if [[ -n "$PRIORITY_ENUM" ]]; then
+  UPDATE_CMD+=("--set-priority" "$PRIORITY_ENUM")
+fi
+if [[ -n "$STATUS_ENUM" ]]; then
+  UPDATE_CMD+=("--set-status" "$STATUS_ENUM")
+fi
+if [[ -n "$PLANNED_ENUM" ]]; then
+  UPDATE_CMD+=("--set-planned" "$PLANNED_ENUM")
+fi
+if [[ -n "$REVIEWER_GID" ]]; then
+  UPDATE_CMD+=("--set-reviewer" "$REVIEWER_GID")
+fi
+if [[ -n "$IMPLEMENTOR_GID" ]]; then
+  UPDATE_CMD+=("--set-implementor" "$IMPLEMENTOR_GID")
+fi
+if [[ ${#UPDATE_CMD[@]} -gt 3 ]]; then
+  "${UPDATE_CMD[@]}" > /dev/null
 fi
 
 FIRST_PROJECT=$(echo "$PROJECT_GIDS" | cut -d, -f1)

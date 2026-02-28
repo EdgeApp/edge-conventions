@@ -86,7 +86,7 @@ If `CREATED: false`, report the existing task to the user and continue with the 
 Delegate to the `pr-create.md` workflow using the **new** (or existing) task URL:
 
 1. `cd` to the target repo directory (see repo-map).
-2. **Read `~/.cursor/skills/pr-create/SKILL.md` now** (use the Read tool — do NOT skip this). Then follow its steps 2-8 (assess state, branch setup, implement, push, verify, PR, link, report).
+2. **Read `~/.cursor/skills/pr-create/SKILL.md` now** (use the Read tool — do NOT skip this). Then follow its steps 1-6 (push, verify, build PR description, create PR, optional Asana updates, report).
 
 The Asana task context from step 1 provides the implementation requirements. The agent already has full context from the parent task.
 </step>
