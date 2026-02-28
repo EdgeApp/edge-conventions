@@ -1,4 +1,4 @@
-Complete agent-assisted development workflow for Edge repositories — slash commands with companion scripts, coding standards, review standards, and the author skill.
+Complete agent-assisted development workflow for Edge repositories — slash skills with companion scripts, coding standards, review standards, and the author skill.
 
 ## Installation
 
@@ -11,7 +11,7 @@ export GIT_BRANCH_PREFIX=yourname   # e.g. jon, paul, sam — used for branch na
 ```bash
 curl -sL https://github.com/EdgeApp/edge-conventions/archive/refs/heads/jon/agents.tar.gz | \
   tar -xz --strip-components=2 -C ~/.cursor 'edge-conventions-jon-agents/.cursor' && \
-  chmod +x ~/.cursor/commands/*.sh && \
+  find ~/.cursor -type f -name "*.sh" -exec chmod +x {} + && \
   echo "✓ Installed into ~/.cursor/"
 ```
 
@@ -25,11 +25,11 @@ curl -sL https://github.com/EdgeApp/edge-conventions/archive/refs/heads/jon/agen
 ## Table of Contents
 
 - [Architecture](#architecture)
-- [Commands](#commands-slash-commands)
+- [Skills](#skills-slash-skills)
 - [Companion Scripts](#companion-scripts)
 - [Shared Module](#shared-module-edge-repojs)
 - [Rules](#rules-mdc-files)
-- [Skills](#skills)
+- [Author Skill](#author-skill)
 - [Design Principles](#design-principles)
 
 ---
@@ -38,17 +38,17 @@ curl -sL https://github.com/EdgeApp/edge-conventions/archive/refs/heads/jon/agen
 
 ```
 .cursor/
-├── commands/          # Slash commands (.md) + companion scripts (.sh, .js)
-├── rules/             # Coding standards (.mdc) — loaded on-demand
-└── skills/            # Agent-triggered capabilities
-    └── author/SKILL.md
+├── skills/            # Primary slash skills (*/SKILL.md) + skill scripts
+├── scripts/           # Shared utility scripts (status dashboard, portability)
+├── commands/          # Minimal legacy command wrappers (if present)
+└── rules/             # Coding/review standards (.mdc)
 ```
 
 **Separation of concerns:**
 - **Commands** (`.md`) — Define agent workflows: steps, rules, edge cases. Invoked explicitly via `/command`.
-- **Companion scripts** (`.sh`, `.js`) — Handle deterministic operations: API calls, git ops, JSON processing. Commands call scripts; scripts never call commands.
+- **Skills** (`SKILL.md`) — Primary workflow units invoked with `/skill-name` (or selected by context).
+- **Companion scripts** (`.sh`, `.js`) — Handle deterministic operations: API calls, git ops, JSON processing. Skills call scripts; scripts never call skills.
 - **Rules** (`.mdc`) — Persistent coding standards loaded on-demand by file type or command step. Two classes: **editing standards** (loaded when writing code) and **review standards** (loaded during PR review).
-- **Skills** (`.md`) — Specialized agent capabilities triggered by context, not explicit invocation.
 
 All GitHub API operations use **`gh` CLI** (`gh api`, `gh api graphql`, `gh pr`). No raw `curl` + `$GITHUB_TOKEN`.
 
@@ -56,43 +56,43 @@ All GitHub API operations use **`gh` CLI** (`gh api`, `gh api graphql`, `gh pr`)
 
 ---
 
-## Commands (Slash Commands)
+## Skills (Slash Skills)
 
-### Core Development
+### Core Implementation
 
-| Command | Description |
+| Skill | Description |
 |---------|-------------|
-| [`/im`](.cursor/commands/im.md) | Implement an Asana task or ad-hoc feature/fix with clean, structured commits |
-| [`/pr-create`](.cursor/commands/pr-create.md) | End-to-end: resolve Asana task → implement → create PR with linking |
-| [`/changelog`](.cursor/commands/changelog.md) | Update CHANGELOG.md following existing patterns |
-| [`/dep-pr`](.cursor/commands/dep-pr.md) | Create a dependent Asana task in another repo and run the full PR workflow |
+| [`/im`](.cursor/skills/im/SKILL.md) | Implement an Asana task or ad-hoc feature/fix with clean, structured commits |
+| [`/one-shot`](.cursor/skills/one-shot/SKILL.md) | Legacy-style one-command flow: `/asana-plan` → `/im` → `/pr-create` with default Asana attach/assign |
+| [`/pr-create`](.cursor/skills/pr-create/SKILL.md) | Create a PR from the current branch; optional Asana attach/assign flags |
+| [`/dep-pr`](.cursor/skills/dep-pr/SKILL.md) | Create dependent Asana tasks and run downstream PR workflow |
+| [`/changelog`](.cursor/skills/changelog/SKILL.md) | Update CHANGELOG.md following existing patterns |
 
-### Code Review
+### Planning and Context
 
-| Command | Description |
+| Skill | Description |
 |---------|-------------|
-| [`/pr-review`](.cursor/commands/pr-review.md) | Review a PR against both coding and review standards |
-| [`/pr-address`](.cursor/commands/pr-address.md) | Address PR feedback with fixup commits, resolving each comment after replying |
-| [`/task-review`](.cursor/commands/task-review.md) | Fetch + analyze Asana task context (shared by `/im` and `/pr-create`) |
+| [`/asana-plan`](.cursor/skills/asana-plan/SKILL.md) | Build implementation plans from Asana tasks or text/file requirements |
+| [`/task-review`](.cursor/skills/task-review/SKILL.md) | Fetch + analyze Asana task context |
+| [`/q`](.cursor/skills/q/SKILL.md) | Answer questions before taking action |
 
-### Landing & Publishing
+### Review and Landing
 
-| Command | Description |
+| Skill | Description |
 |---------|-------------|
-| [`/pr-land`](.cursor/commands/pr-land.md) | Full landing pipeline: discover → comment check → rebase → merge → publish → Asana update |
+| [`/pr-review`](.cursor/skills/pr-review/SKILL.md) | Review a PR against coding and review standards |
+| [`/pr-address`](.cursor/skills/pr-address/SKILL.md) | Address PR feedback with fixup commits and replies |
+| [`/pr-land`](.cursor/skills/pr-land/SKILL.md) | Land approved PRs: prepare, merge, publish, and Asana updates |
 
-### Analysis
+### Asana and Utility
 
-| Command | Description |
+| Skill | Description |
 |---------|-------------|
-| [`/chat-audit`](.cursor/commands/chat-audit.md) | Analyze a Cursor chat export to identify inefficiencies and rule violations against the invoked command |
-
-### Utility
-
-| Command | Description |
-|---------|-------------|
-| [`/q`](.cursor/commands/q.md) | Answer questions before taking action |
-| [`/author`](.cursor/commands/author.md) | Create or edit commands and skills via the author skill |
+| [`/asana-task-update`](.cursor/skills/asana-task-update/SKILL.md) | Generic Asana mutations (attach PR, assign, status/field updates) |
+| [`/standup`](.cursor/skills/standup/SKILL.md) | Generate daily standup from Asana + GitHub activity |
+| [`/chat-audit`](.cursor/skills/chat-audit/SKILL.md) | Audit chat sessions for workflow/rule issues |
+| [`/convention-sync`](.cursor/skills/convention-sync/SKILL.md) | Sync `~/.cursor` changes with this repo and update PR description |
+| [`/author`](.cursor/skills/author/SKILL.md) | Create/update/debug skills and related scripts/rules |
 
 ---
 
@@ -102,18 +102,18 @@ All GitHub API operations use **`gh` CLI** (`gh api`, `gh api graphql`, `gh pr`)
 
 | Script | What it does | API |
 |--------|-------------|-----|
-| [`pr-create.sh`](.cursor/commands/pr-create.sh) | Create PR for current branch with auto-generated title/body | `gh pr create` |
-| [`pr-address.sh`](.cursor/commands/pr-address.sh) | Fetch unresolved feedback, post replies, resolve threads, mark addressed | `gh api` REST + GraphQL |
-| [`github-pr-review.sh`](.cursor/commands/github-pr-review.sh) | Fetch PR context (metadata + patches) and submit reviews | `gh pr view` + `gh api` REST |
-| [`github-pr-activity.sh`](.cursor/commands/github-pr-activity.sh) | List PRs by activity (recent reviews, comments, CI status) | `gh api graphql` |
+| [`pr-create.sh`](.cursor/skills/pr-create/scripts/pr-create.sh) | Create PR for current branch with auto-generated title/body | `gh pr create` |
+| [`pr-address.sh`](.cursor/skills/pr-address/scripts/pr-address.sh) | Fetch unresolved feedback, post replies, resolve threads, mark addressed | `gh api` REST + GraphQL |
+| [`github-pr-review.sh`](.cursor/skills/pr-review/scripts/github-pr-review.sh) | Fetch PR context (metadata + patches) and submit reviews | `gh pr view` + `gh api` REST |
+| [`github-pr-activity.sh`](.cursor/skills/standup/scripts/github-pr-activity.sh) | List PRs by activity (recent reviews, comments, CI status) | `gh api graphql` |
 
 ### PR Status Dashboard
 
 | Script | What it does | API |
 |--------|-------------|-----|
-| [`pr-status-gql.sh`](.cursor/commands/pr-status-gql.sh) | PR status with review state, CI checks, new comments (primary) | `gh api graphql` |
-| [`pr-status.sh`](.cursor/commands/pr-status.sh) | Same as above, REST fallback | `gh api` REST |
-| [`pr-watch.sh`](.cursor/commands/pr-watch.sh) | TUI wrapper — auto-refresh dashboard with rate limit awareness | Delegates to above |
+| [`pr-status-gql.sh`](.cursor/scripts/pr-status-gql.sh) | PR status with review state, CI checks, new comments (primary) | `gh api graphql` |
+| [`pr-status.sh`](.cursor/scripts/pr-status.sh) | Same as above, REST fallback | `gh api` REST |
+| [`pr-watch.sh`](.cursor/scripts/pr-watch.sh) | TUI wrapper — auto-refresh dashboard with rate limit awareness | Delegates to above |
 
 ### PR Landing Pipeline (`/pr-land`)
 
@@ -121,12 +121,12 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 
 | Script | Phase | What it does | API |
 |--------|-------|-------------|-----|
-| [`pr-land-discover.sh`](.cursor/commands/pr-land-discover.sh) | 1: Discovery | Find all `$GIT_BRANCH_PREFIX/*` PRs with approval status | Single `gh api graphql` query |
-| [`pr-land-comments.sh`](.cursor/commands/pr-land-comments.sh) | 2: Comment check | Detect unaddressed feedback (inline threads, review bodies, top-level comments) | `gh api graphql` per PR |
-| [`pr-land-prepare.sh`](.cursor/commands/pr-land-prepare.sh) | 3: Prepare | Autosquash → rebase → conflict detection → verification | Git only |
-| [`verify-repo.sh`](.cursor/commands/verify-repo.sh) | 3b: Verify | CHANGELOG validation + `prepare`/`tsc`/`lint`/`test` (with `--base` and `--require-changelog` options) | Git + yarn |
-| [`pr-land-merge.sh`](.cursor/commands/pr-land-merge.sh) | 5: Merge | Sequential merge with auto-rebase, mandatory verification | `gh api` REST |
-| [`pr-land-publish.sh`](.cursor/commands/pr-land-publish.sh) | 6: Publish | Version bump, changelog update, commit + tag (no push) | Git + npm |
+| [`pr-land-discover.sh`](.cursor/skills/pr-land/scripts/pr-land-discover.sh) | 1: Discovery | Find all `$GIT_BRANCH_PREFIX/*` PRs with approval status | Single `gh api graphql` query |
+| [`pr-land-comments.sh`](.cursor/skills/pr-land/scripts/pr-land-comments.sh) | 2: Comment check | Detect unaddressed feedback (inline threads, review bodies, top-level comments) | `gh api graphql` per PR |
+| [`pr-land-prepare.sh`](.cursor/skills/pr-land/scripts/pr-land-prepare.sh) | 3: Prepare | Autosquash → rebase → conflict detection → verification | Git only |
+| [`verify-repo.sh`](.cursor/skills/verify-repo.sh) | 3b: Verify | CHANGELOG validation + `prepare`/`tsc`/`lint`/`test` | Git + yarn |
+| [`pr-land-merge.sh`](.cursor/skills/pr-land/scripts/pr-land-merge.sh) | 5: Merge | Sequential merge with auto-rebase, mandatory verification | `gh api` REST |
+| [`pr-land-publish.sh`](.cursor/skills/pr-land/scripts/pr-land-publish.sh) | 6: Publish | Version bump, changelog update, commit + tag (no push) | Git + npm |
 
 **Conflict handling is fully scripted:**
 - Code conflicts → skip PR, continue with remaining
@@ -136,191 +136,180 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 
 | Script | What it does |
 |--------|-------------|
-| [`cursor-chat-extract.js`](.cursor/commands/cursor-chat-extract.js) | Parse Cursor chat export JSON into compact structured summary (messages, tool calls, stats) |
+| [`cursor-chat-extract.js`](.cursor/skills/chat-audit/scripts/cursor-chat-extract.js) | Parse Cursor chat export JSON into compact structured summary (messages, tool calls, stats) |
 
 ### Asana Integration
 
 | Script | What it does | API |
 |--------|-------------|-----|
-| [`asana-get-context.sh`](.cursor/commands/asana-get-context.sh) | Fetch task details, attachments, subtasks, custom fields | Asana REST |
-| [`asana-attach-pr.sh`](.cursor/commands/asana-attach-pr.sh) | Attach a GitHub PR URL to an Asana task | Asana REST |
-| [`asana-create-dep-task.sh`](.cursor/commands/asana-create-dep-task.sh) | Create dependent task in another repo's project | Asana REST |
-| [`asana-whoami.sh`](.cursor/commands/asana-whoami.sh) | Get current Asana user info | Asana REST |
-| [`asana-verification-needed.sh`](.cursor/commands/asana-verification-needed.sh) | Update task status "Publish Needed" → "Verification Needed" | Asana REST (no GitHub) |
+| [`asana-get-context.sh`](.cursor/skills/asana-get-context.sh) | Fetch task details, attachments, subtasks, custom fields | Asana REST |
+| [`asana-task-update.sh`](.cursor/skills/asana-task-update/scripts/asana-task-update.sh) | Generic task updates (attach PR, assign, status, fields) | Asana REST |
+| [`asana-create-dep-task.sh`](.cursor/skills/dep-pr/scripts/asana-create-dep-task.sh) | Create dependent task in another repo's project | Asana REST |
+| [`asana-whoami.sh`](.cursor/skills/asana-whoami.sh) | Get current Asana user info | Asana REST |
 
 ### Build & Deps
 
 | Script | What it does |
 |--------|-------------|
-| [`lint-commit.sh`](.cursor/commands/lint-commit.sh) | ESLint `--fix` before commit, auto-runs `update-eslint-warnings` when available |
-| [`lint-warnings.sh`](.cursor/commands/lint-warnings.sh) | Update `eslint-warnings.mdc` knowledge base from current lint output |
-| [`install-deps.sh`](.cursor/commands/install-deps.sh) | Install dependencies and run prepare script |
-| [`upgrade-dep.sh`](.cursor/commands/upgrade-dep.sh) | Upgrade a dependency in the GUI repo |
+| [`lint-commit.sh`](.cursor/skills/lint-commit.sh) | ESLint `--fix` before commit, auto-runs `update-eslint-warnings` when available |
+| [`lint-warnings.sh`](.cursor/skills/im/scripts/lint-warnings.sh) | Update `eslint-warnings.mdc` knowledge base from current lint output |
+| [`install-deps.sh`](.cursor/skills/install-deps.sh) | Install dependencies and run prepare script |
+| [`upgrade-dep.sh`](.cursor/skills/pr-land/scripts/upgrade-dep.sh) | Upgrade a dependency in the GUI repo |
 
 ### Sync & Portability
 
 | Script | What it does |
 |--------|-------------|
-| [`convention-sync.sh`](.cursor/commands/convention-sync.sh) | Diff and sync `~/.cursor/` files with the edge-conventions repo |
-| [`tool-sync.sh`](.cursor/commands/tool-sync.sh) | Sync Cursor rules, commands, and scripts to OpenCode and Claude Code formats |
+| [`convention-sync.sh`](.cursor/skills/convention-sync/scripts/convention-sync.sh) | Diff and sync `~/.cursor/` files with the edge-conventions repo |
+| [`tool-sync.sh`](.cursor/scripts/tool-sync.sh) | Sync Cursor rules, skills, and scripts to OpenCode and Claude Code formats |
 | [`port-to-opencode.sh`](.cursor/scripts/port-to-opencode.sh) | Convert Cursor `.mdc`/`.md` files to OpenCode-compatible JSON + MD mirrors |
 
 ---
 
 ## Dependency Graph
 
-### Command → Command
+### Skill → Skill
 
 ```mermaid
 graph LR
-  subgraph Commands
-    pr-create["/pr-create"]
-    im["/im"]
-    dep-pr["/dep-pr"]
-    pr-land["/pr-land"]
-    pr-address["/pr-address"]
-    pr-review["/pr-review"]
-    chat-audit["/chat-audit"]
-    task-review["/task-review"]
-    standup["/standup"]
-    convention-sync["/convention-sync"]
-    changelog["/changelog"]
-    author["/author"]
-    q["/q"]
-  end
-  pr-create -->|"uses im.md rules"| im
-  pr-create --> task-review
-  im --> task-review
-  dep-pr -->|"runs full workflow"| pr-create
-  chat-audit -->|"audits against"| im
-  chat-audit --> author
-  pr-land --> changelog
+  asanaPlan["/asana-plan"]
+  taskReview["/task-review"]
+  im["/im"]
+  oneShot["/one-shot"]
+  depPr["/dep-pr"]
+  prCreate["/pr-create"]
+  asanaTaskUpdate["/asana-task-update"]
+  author["/author"]
+  conventionSync["/convention-sync"]
+
+  oneShot --> asanaPlan
+  oneShot --> im
+  oneShot --> prCreate
+  asanaPlan --> taskReview
+  im --> asanaPlan
+  depPr --> prCreate
+  prCreate --> asanaTaskUpdate
+  author --> conventionSync
 ```
 
-### Full Dependency Graph
+Skills with no skill dependencies:
 
-Left-to-right: commands → scripts → shared modules. Gold nodes are shared (3+ consumers).
+- `/asana-task-update`
+- `/task-review`
+- `/q`
+- `/pr-review`
+- `/pr-address`
+- `/pr-land`
+- `/standup`
+- `/chat-audit`
+- `/changelog`
+- `/convention-sync`
+
+### Full Skill/Script Dependency Graph
+
+Top-to-bottom organization: skill layer, skill-specific scripts, shared scripts.
 
 ```mermaid
-graph LR
-  %% ── Commands ──
-  subgraph Commands
+graph TD
+  subgraph skillLayer [Skills]
     im["/im"]
-    pr-create["/pr-create"]
-    pr-address["/pr-address"]
-    pr-review["/pr-review"]
-    pr-land["/pr-land"]
-    dep-pr["/dep-pr"]
+    oneShot["/one-shot"]
+    asanaPlan["/asana-plan"]
+    taskReview["/task-review"]
+    depPr["/dep-pr"]
+    prCreate["/pr-create"]
+    asanaTaskUpdate["/asana-task-update"]
+    prLand["/pr-land"]
+    prReview["/pr-review"]
+    prAddress["/pr-address"]
     standup["/standup"]
-    conv-sync["/convention-sync"]
-    chat-audit["/chat-audit"]
-    task-review["/task-review"]
+    chatAudit["/chat-audit"]
+    conventionSync["/convention-sync"]
+    author["/author"]
+    q["/q"]
+    changelog["/changelog"]
   end
 
-  subgraph Scripts
-    lint-warn("lint-warnings.sh")
-    install-deps("install-deps.sh")
-    pr-create-sh("pr-create.sh")
-    pr-address-sh("pr-address.sh")
-    gh-pr-review("github-pr-review.sh")
-    pr-land-disc("pr-land-discover.sh")
-    pr-land-cmts("pr-land-comments.sh")
-    pr-land-prep("pr-land-prepare.sh")
-    pr-land-merge("pr-land-merge.sh")
-    pr-land-pub("pr-land-publish.sh")
-    pr-land-ext("pr-land-extract-asana-task.sh")
-    asana-verify("asana-verification-needed.sh")
-    upgrade-dep("upgrade-dep.sh")
-    asana-attach("asana-attach-pr.sh")
-    asana-dep("asana-create-dep-task.sh")
-    asana-standup("asana-standup.sh")
-    gh-pr-act("github-pr-activity.sh")
-    conv-sync-sh("convention-sync.sh")
-    chat-extract("cursor-chat-extract.js")
+  subgraph skillScripts [Skill Scripts]
+    prCreateSh["pr-create.sh"]
+    prAddressSh["pr-address.sh"]
+    prReviewSh["github-pr-review.sh"]
+    depTaskSh["asana-create-dep-task.sh"]
+    asanaTaskUpdateSh["asana-task-update.sh"]
+    prLandDisc["pr-land-discover.sh"]
+    prLandCmts["pr-land-comments.sh"]
+    prLandPrep["pr-land-prepare.sh"]
+    prLandMerge["pr-land-merge.sh"]
+    prLandPublish["pr-land-publish.sh"]
+    prLandExtract["pr-land-extract-asana-task.sh"]
+    standupAsana["asana-standup.sh"]
+    standupGh["github-pr-activity.sh"]
+    chatExtract["cursor-chat-extract.js"]
+    conventionSyncSh["convention-sync.sh"]
+    generateClaude["generate-claude-md.sh"]
+    lintWarn["lint-warnings.sh"]
   end
 
-  subgraph Shared
-    lint-commit("lint-commit.sh"):::shared
-    verify-repo("verify-repo.sh"):::shared
-    asana-get-ctx("asana-get-context.sh"):::shared
-    edge-repo("edge-repo.js"):::shared
-    asana-whoami("asana-whoami.sh"):::shared
+  subgraph sharedScripts [Shared Scripts]
+    lintCommit["lint-commit.sh"]
+    verifyRepo["verify-repo.sh"]
+    asanaGetContext["asana-get-context.sh"]
+    asanaWhoAmI["asana-whoami.sh"]
+    installDeps["install-deps.sh"]
+    edgeRepo["edge-repo.js"]
   end
 
-  subgraph Standalone
-    pr-watch("pr-watch.sh")
-    pr-status-gql("pr-status-gql.sh")
-    pr-status("pr-status.sh")
-  end
+  oneShot --> asanaPlan
+  oneShot --> im
+  oneShot --> prCreate
+  asanaPlan --> taskReview
+  im --> asanaPlan
+  depPr --> prCreate
+  prCreate --> asanaTaskUpdate
+  author --> conventionSync
 
-  %% ── /im ──
-  im --> lint-warn
-  im --> lint-commit
-  im --> install-deps
-  im --> verify-repo
-  im --> asana-get-ctx
+  prCreate --> prCreateSh
+  prCreate --> verifyRepo
+  prCreate --> asanaTaskUpdateSh
+  im --> lintWarn
+  im --> lintCommit
+  im --> verifyRepo
+  im --> installDeps
+  depPr --> depTaskSh
+  depPr --> asanaGetContext
+  asanaTaskUpdate --> asanaTaskUpdateSh
+  taskReview --> asanaGetContext
+  prAddress --> prAddressSh
+  prAddress --> lintCommit
+  prReview --> prReviewSh
+  prLand --> prLandDisc
+  prLand --> prLandCmts
+  prLand --> prLandPrep
+  prLand --> prLandMerge
+  prLand --> prLandPublish
+  prLand --> prLandExtract
+  prLand --> asanaTaskUpdateSh
+  prLand --> verifyRepo
+  standup --> standupAsana
+  standup --> standupGh
+  chatAudit --> chatExtract
+  conventionSync --> conventionSyncSh
+  conventionSync --> generateClaude
 
-  %% ── /pr-create ──
-  pr-create --> pr-create-sh
-  pr-create --> lint-commit
-  pr-create --> verify-repo
-  pr-create --> asana-attach
-  pr-create --> asana-get-ctx
-
-  %% ── /pr-address ──
-  pr-address --> pr-address-sh
-  pr-address --> lint-commit
-
-  %% ── /pr-review ──
-  pr-review --> gh-pr-review
-
-  %% ── /pr-land ──
-  pr-land --> pr-land-disc
-  pr-land --> pr-land-cmts
-  pr-land --> pr-land-prep
-  pr-land --> verify-repo
-  pr-land --> pr-land-merge
-  pr-land --> pr-land-pub
-  pr-land --> pr-land-ext
-  pr-land --> asana-verify
-  pr-land --> lint-commit
-  pr-land --> upgrade-dep
-
-  %% ── /dep-pr ──
-  dep-pr --> asana-get-ctx
-  dep-pr --> asana-dep
-
-  %% ── /standup ──
-  standup --> asana-standup
-  standup --> gh-pr-act
-
-  %% ── /convention-sync ──
-  conv-sync --> conv-sync-sh
-
-  %% ── /chat-audit ──
-  chat-audit --> chat-extract
-
-  %% ── /task-review ──
-  task-review --> asana-get-ctx
-
-  %% ── Script → Shared ──
-  asana-attach --> asana-whoami
-  asana-dep --> asana-whoami
-  asana-standup --> asana-whoami
-  pr-land-prep --> edge-repo
-  pr-land-merge --> edge-repo
-  pr-land-pub --> edge-repo
-  pr-watch --> pr-status-gql
-  pr-watch --> pr-status
-
-  classDef shared stroke-width:3px,stroke:#e6a817,fill:#fef3cd,color:#000
+  depTaskSh --> asanaWhoAmI
+  depTaskSh --> asanaTaskUpdateSh
+  asanaTaskUpdateSh --> asanaWhoAmI
+  standupAsana --> asanaWhoAmI
+  prLandPrep --> edgeRepo
+  prLandMerge --> edgeRepo
+  prLandPublish --> edgeRepo
 ```
 
 ---
 
 ## Shared Module: `edge-repo.js`
 
-[`edge-repo.js`](.cursor/commands/edge-repo.js) eliminates duplication across the `pr-land-*` scripts. Exports:
+[`edge-repo.js`](.cursor/skills/pr-land/scripts/edge-repo.js) eliminates duplication across the `pr-land-*` scripts. Exports:
 
 | Function | Purpose |
 |----------|---------|
@@ -351,11 +340,11 @@ graph LR
 
 ---
 
-## Skills
+## Author Skill
 
 | Skill | Purpose |
 |-------|---------|
-| [`author/SKILL.md`](.cursor/skills/author/SKILL.md) | Meta-skill for creating/maintaining commands and skills. Enforces XML format, `scripts-over-reasoning`, `gh-cli-over-curl`, `minimize-context`, companion script naming conventions, `small-model-conventions`, and behavioral dependency checks during revision. |
+| [`author/SKILL.md`](.cursor/skills/author/SKILL.md) | Meta-skill for creating/maintaining skills, scripts, and rules. Enforces XML format, `scripts-over-reasoning`, `gh-cli-over-curl`, dependency-audit requirements before script add/update/remove, and convention-sync/CLAUDE sync post-authoring behavior. |
 
 ---
 
@@ -365,11 +354,11 @@ graph LR
 2. **`gh` CLI over `curl`** — All GitHub API calls use `gh api` / `gh api graphql`. Handles auth, pagination, API versioning automatically.
 3. **GraphQL over REST** — Fetch only required fields in a single request where possible. Fall back to REST only when GraphQL doesn't expose the needed data (e.g., file patches).
 4. **DRY shared modules** — Common utilities extracted into `edge-repo.js` rather than duplicated across scripts.
-5. **XML format** — Commands use XML structure (`<goal>`, `<rules>`, `<step>`) for reliable LLM instruction-following.
+5. **XML format** — Skills use XML structure (`<goal>`, `<rules>`, `<step>`) for reliable LLM instruction-following.
 6. **Standards-first** — Load coding standards before writing or reviewing any code.
 7. **Fix workflow first** — When behavior is wrong, fix the command/skill definition, not the downstream symptom.
 8. **No hardcoded usernames** — All user-specific values come from `GIT_BRANCH_PREFIX` env var, set once in `.zshrc`.
 9. **Minimize context** — Script output must be compact and structured. Never return raw API responses. Every token costs context.
-10. **Small-model conventions** — Commands that run on faster/cheaper models use verbatim bash, file-over-args, inline guardrails, and explicit parallel instructions for reliability.
+10. **Small-model conventions** — High-frequency skills that run on faster/cheaper models use verbatim bash, file-over-args, inline guardrails, and explicit parallel instructions for reliability.
 11. **Knowledge base over crawling** — Maintain curated knowledge files (e.g., `eslint-warnings.mdc`) instead of having the agent crawl/grep for information repeatedly. Pre-indexed knowledge reduces tool calls and context consumption.
 12. **Continuous improvement** — Workflows feed back into their own knowledge. PR review feedback updates `review-standards.mdc`, addressed warnings update `eslint-warnings.mdc`, and chat audits surface rule gaps. Each cycle reduces repetitive context gathering by the agent and repetitive review by humans.
