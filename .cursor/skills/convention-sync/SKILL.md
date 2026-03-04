@@ -9,6 +9,7 @@ metadata:
 <goal>Sync cursor files between `~/.cursor/` and the `edge-conventions` repo, commit, push, and update PR description from README. Also maintains cross-tool compatibility: symlinks `~/.claude/skills` → `~/.cursor/skills` and generates `~/.claude/CLAUDE.md` from always-apply rules.</goal>
 
 <rules>
+<rule id="local-is-canonical">`~/.cursor/` is the canonical source. Edits happen locally; the repo is the distribution copy. Default direction is `user-to-repo`. Use `--repo-to-user` only for onboarding or pulling changes authored by others. The script does not detect bidirectional conflicts — whichever direction you run overwrites the other side.</rule>
 <rule id="use-companion-script">Use `scripts/convention-sync.sh` for diffing and syncing. Do NOT manually diff or copy files.</rule>
 <rule id="dry-run-first">Always run without `--stage` first to show the summary. Only stage/commit after user confirms.</rule>
 <rule id="no-script-bypass">If the script fails, report the error and STOP.</rule>

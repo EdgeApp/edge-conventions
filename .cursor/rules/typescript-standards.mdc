@@ -73,7 +73,7 @@ Exception: Empty handlers are acceptable ONLY when the rejection is an expected 
 <standard id="extract-helpers">Extract reusable helpers for common boilerplate patterns (e.g., "run at most once in parallel").</standard>
 
 <standard id="precompute-outside-loops">Avoid calling expensive transformation functions (like `normalizeForSearch`, `toLowerCase`) inside loops when the input doesn't change per iteration. Pre-compute outside the loop.
-❌ `items.filter(item => searchTerms.every(term => normalize(item![1770928879881](image/typescript-standards/1770928879881.png)![1770928886532](image/typescript-standards/1770928886532.png).name).includes(term)))`
+❌ `items.filter(item => searchTerms.every(term => normalize(item.name).includes(term)))`
 ✅ `items.filter(item => { const n = normalize(item.name); return searchTerms.every(term => n.includes(term)) })`
 </standard>
 

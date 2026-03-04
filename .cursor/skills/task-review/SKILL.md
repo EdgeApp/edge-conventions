@@ -41,6 +41,10 @@ After the script completes, read the processed files based on the output:
 3. **`PDF_PAGES:` directories** — Read the page images (`page-01.png`, `page-02.png`, etc.) using the Read tool. For large documents (>20 pages), read the first 10 pages, then skim the rest by reading every 3rd-5th page.
 4. **`UNPACKED:` directories** — List contents (`ls -R`), then read relevant files (text files, images, etc.). Skip macOS metadata (`__MACOSX/`, `.DS_Store`).
 </sub-step>
+
+<sub-step name="No attachments case">
+If `ATTACHMENTS: (none)` appears in script output, do **not** probe `/tmp/asana-task-<task_gid>/`. Treat missing `/tmp` paths as expected in this case and continue to Step 2.
+</sub-step>
 </step>
 
 <step id="2" name="Determine target repo">

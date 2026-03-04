@@ -5,9 +5,11 @@ alwaysApply: true
 
 <rules description="Non-negotiable constraints.">
 
+<rule id="cursor-workflow-paths">All workflow-related skill definitions (`*.md` / `SKILL.md`) and workflow companion scripts (`*.sh`) are sourced from `~/.cursor/`. When executing skills, prefer explicit `~/.cursor/...` paths and do not assume repo-local workflow files unless the skill explicitly points to one.</rule>
+
 <rule id="skill-script-path-resolution">When a skill mentions a script path, resolve it under `~/.cursor/skills/<skill>/scripts/` unless the skill explicitly specifies an absolute path elsewhere. Do not assume repo-relative `scripts/` paths without verifying the skill directory contents.</rule>
 
-<rule id="halt-on-error">When ANY shell command fails (non-zero exit code) during a workflow:
+<rule id="halt-on-error">When ANY shell command fails (non-zero exit code) during a workflow (except where explicitly allowed by `auto-fix-verification-failures` or `companion-script-nonzero-contracts`):
 1. **STOP** — do not retry, work around, substitute, or continue the workflow.
 2. **Report** — show the user the exact command, exit code, and error output.
 3. **Diagnose** — classify the failure: missing tool (`command not found`), wrong path, permissions, or logic error.
@@ -45,6 +47,19 @@ Never auto-fix:
 - Companion script contract/usage failures
 - Unexpected exit codes from orchestrator scripts
 - Any failure requiring destructive operations or workflow bypasses
+</rule>
+
+<rule id="companion-script-nonzero-contracts">Respect documented companion script exit-code contracts. Non-zero does NOT always mean fatal.
+
+For `~/.cursor/skills/im/scripts/lint-warnings.sh`:
+- `0` = no warnings
+- `1` = warnings found (expected actionable state)
+- `2` = execution error (fatal)
+
+Required behavior:
+1. If exit `1`, continue workflow by fixing warnings before implementation.
+2. If warnings exist, commit warning fixes in a separate lint-fix commit immediately before feature commits.
+3. If exit `2`, apply `halt-on-error`.
 </rule>
 
 <rule id="no-silent-substitution">Do NOT silently substitute an alternative tool or approach when a command fails. If `rg` is not found, do not fall back to `grep`. If a script exits non-zero, do not manually replicate what the script does. The failure is the signal — report it.</rule>

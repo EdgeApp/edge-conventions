@@ -5,6 +5,10 @@
 # outputs a structured JSON summary of new, modified, and deleted files.
 # With --stage: copies changed files and stages them in git (or copies to user dir with --repo-to-user).
 # With --commit: stages + commits (requires -m). Only valid for user-to-repo direction.
+#
+# Sync model: ~/.cursor/ is canonical. Default direction (user-to-repo) copies local
+# files into the repo. --repo-to-user is for onboarding or pulling others' changes.
+# No bidirectional conflict detection — the chosen direction overwrites the other side.
 
 set -euo pipefail
 

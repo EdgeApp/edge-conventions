@@ -11,12 +11,12 @@ metadata:
 <rules description="Non-negotiable constraints.">
 <rule id="read-coding-standards">Before writing ANY code, read `.cursor/rules/typescript-standards.mdc` and follow all rules and standards in it throughout the implementation.</rule>
 <rule id="no-impl-before-confirm">Do NOT begin implementation until the user confirms the `/asana-plan` output (Step 0).</rule>
-<rule id="lint-before-change">Before the first edit to ANY file, run `scripts/lint-warnings.sh <files...>` to check for warnings AND load matching fix patterns into context. If warnings exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This applies to every file you touch, including ones discovered mid-implementation — not just the files you planned upfront.</rule>
+<rule id="lint-before-change">Before the first edit to ANY file, run `~/.cursor/skills/im/scripts/lint-warnings.sh <files...>` to check for warnings AND load matching fix patterns into context. If warnings exist, fix them in a separate commit IMMEDIATELY BEFORE the commit with actual changes. This applies to every file you touch, including ones discovered mid-implementation — not just the files you planned upfront.</rule>
 <rule id="no-manual-formatting">Do not manually fix formatting. `lint-commit.sh` runs `eslint --fix` (which includes Prettier) before committing. If you see a formatting lint after editing, do NOT make another edit to fix it.</rule>
 <rule id="commit-script">Always commit using `~/.cursor/skills/lint-commit.sh -m "message" [files...]` or `--fixup <hash>` for fixup commits.</rule>
 <rule id="clean-history">The final commit history must read as a clean, straight-line progression — as if every decision was made correctly up front. Never preserve the "squiggly path" of development (adding then removing code, temporary scaffolding, exploratory commits). If you introduce something in commit A and remove it in commit B, restructure so the final history never contains it. Plan commits proactively to avoid this; when it happens anyway, restructure the branch before finishing.</rule>
 <rule id="no-script-bypass">If a companion script fails, report the error and STOP. Do NOT fall back to raw `gh`, `curl`, or other workarounds.</rule>
-<rule id="script-timeouts">`asana-get-context.sh` can take up to 90s. Always set `block_until_ms: 120000` when invoking it to avoid unnecessary backgrounding and polling.</rule>
+<rule id="script-timeouts">`asana-get-context.sh` can take up to 90s and `install-deps.sh` can exceed 10s on repo prepare steps. Always use at least a 120000ms timeout for these scripts to avoid false failures from client-side time limits.</rule>
 </rules>
 
 <step id="0" name="Planning handoff via /asana-plan">
@@ -34,7 +34,7 @@ If the task describes a regression (e.g. "broke in version X", "stopped working 
 1. **Identify the breaking commit** using `git log`, `git bisect`, or version tag comparison. Don't take the reported version from the task at face value — verify by examining the actual commit history.
 2. **Review the original change's full intent.** Find the associated PR and any linked tasks/discussions. The regression-causing commit likely had legitimate goals (performance, refactoring, new features). Understand ALL of its intended effects, not just the one that broke.
 3. **Ensure the fix preserves the original intent.** The fix must not undo the beneficial changes introduced by the regression commit. If the fix conflicts with the original intent, flag this to the user with tradeoffs before proceeding.
-</step>
+   </step>
 
 <step id="1" name="Branch setup">
 After Step 0 determines the target repo (or if no Asana task, use the current repo):
@@ -47,7 +47,7 @@ After Step 0 determines the target repo (or if no Asana task, use the current re
    - **On the correct feature branch**: Continue.
 3. **Branch naming**: `$GIT_BRANCH_PREFIX/<short-description>` or `$GIT_BRANCH_PREFIX/fix/<short-description>` for bug fixes. Use kebab-case. Example: `<prefix>/some-feature` or `<prefix>/fix/some-bug`
 4. **Assume a new branch is needed** unless the current branch clearly matches the task. Do NOT ask for confirmation — the existing branch has its own committed work and is unaffected.
-5. **Install dependencies**: After creating or switching to the feature branch, run `~/.cursor/skills/install-deps.sh` to ensure dependencies match the base branch state.
+5. **Install dependencies**: After creating or switching to the feature branch, run `~/.cursor/skills/install-deps.sh` with a timeout of at least 120000ms to ensure dependencies match the base branch state without false timeout failures.
 
 If the task spans multiple repos, note the additional repos but implement in the primary repo first.
 </step>
@@ -56,15 +56,17 @@ If the task spans multiple repos, note the additional repos but implement in the
 **Before writing ANY code**, run `lint-warnings.sh` on every file you plan to modify:
 
 ```bash
-scripts/lint-warnings.sh <file1> <file2> ...
+~/.cursor/skills/im/scripts/lint-warnings.sh <file1> <file2> ...
 ```
 
 This script:
+
 1. Runs eslint and shows warnings grouped by rule
 2. Outputs matching fix patterns from `~/.cursor/rules/typescript-standards.mdc`
 3. Flags unmatched rules that need new patterns added
 
 If warnings exist:
+
 1. Apply fixes using the matched patterns in the output
 2. For **unmatched rules**: After fixing, add a new `<pattern id="..." rule="...">` to `typescript-standards.mdc` so future occurrences have guidance
 3. Commit lint fixes separately:
@@ -80,7 +82,7 @@ This ensures the subsequent feature commit introduces zero pre-existing warnings
 </step>
 
 <step id="3" name="Implementation">
-1. **Lint-check newly discovered files**: If you need to modify a file not covered in Step 2, run `scripts/lint-warnings.sh <file>` before editing it. If pre-existing warnings exist, fix them using the matched patterns and commit as a `--fixup` to the lint-fix commit from Step 2 (use `git log --oneline` to find the hash). If no lint-fix commit exists yet, create one.
+1. **Lint-check newly discovered files**: If you need to modify a file not covered in Step 2, run `~/.cursor/skills/im/scripts/lint-warnings.sh <file>` before editing it. If pre-existing warnings exist, fix them using the matched patterns and commit as a `--fixup` to the lint-fix commit from Step 2 (use `git log --oneline` to find the hash). If no lint-fix commit exists yet, create one.
 2. Break up the feature into multiple commits if necessary. Commit messages should be a concise title without tags like "feat" and a short body.
 3. Open relevant ts/tsx files before writing code.
 4. Commit using `lint-commit.sh`:
@@ -135,7 +137,7 @@ Other repos only have `## Unreleased` — no staging distinction.
    - **Fixup commits exist**: Autosquash with `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base-branch>`. Do this immediately — never leave fixup commits unsquashed.
    - **Structural issues** (add-then-remove cycles, misplaced changes, commits that should be squashed, CHANGELOG in intermediate commits): Use scripted `GIT_SEQUENCE_EDITOR` to drop, reorder, or squash commits, resolving conflicts as needed. Verify the final tree matches the pre-restructure state with `git diff`.
    - **Git lock conflicts**: VSCode's built-in git integration may race with rebase operations, creating `.git/index.lock` files. Always run `rm -f .git/index.lock` before any `git rebase` command to prevent stalls. If a rebase step fails with "index.lock: File exists", remove the lock and `git rebase --continue`.
-</step>
+     </step>
 
 <step id="5" name="Verification">
 Run full verification to catch issues that per-commit checks (`lint-commit.sh`) may have missed (e.g. transitive snapshot breakage, type errors across files):

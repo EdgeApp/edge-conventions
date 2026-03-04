@@ -69,6 +69,7 @@ fi
 
 if $DO_ATTACH && [[ -z "${ASANA_GITHUB_SECRET:-}" ]]; then
   echo "Error: ASANA_GITHUB_SECRET not set (required for --attach-pr)" >&2
+  echo "Obtain via OAuth: https://github.integrations.asana.plus/auth?domainId=ghactions" >&2
   exit 1
 fi
 
@@ -90,6 +91,7 @@ status_to_gid() {
     "Review Needed") echo "$REVIEW_NEEDED_OPTION" ;;
     "Publish Needed") echo "$PUBLISH_NEEDED_OPTION" ;;
     "Verification Needed") echo "$VERIFICATION_NEEDED_OPTION" ;;
+    # Passthrough: accepts raw GIDs from callers like asana-create-dep-task.sh
     *) echo "$1" ;;
   esac
 }

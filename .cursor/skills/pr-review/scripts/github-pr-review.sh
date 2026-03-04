@@ -45,7 +45,7 @@ case "$CMD" in
     [[ -n "$PR" ]] && VIEW_ARGS+=("$PR")
     [[ -n "$OWNER" && -n "$REPO" ]] && VIEW_ARGS+=("--repo" "$OWNER/$REPO")
 
-    META=$(gh pr view "${VIEW_ARGS[@]}" \
+    META=$(gh pr view ${VIEW_ARGS[@]+"${VIEW_ARGS[@]}"} \
       --json number,title,url,headRefName,headRefOid,baseRefName,reviews 2>&1) || {
       echo "Error: Failed to fetch PR. Output: $META" >&2
       exit 1

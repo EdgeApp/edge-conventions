@@ -61,7 +61,7 @@ metadata:
 ONE tool call:
 
 ```bash
-scripts/pr-land-discover.sh [repo1 repo2 ...]
+~/.cursor/skills/pr-land/scripts/pr-land-discover.sh [repo1 repo2 ...]
 ```
 
 Returns JSON with all `$GIT_BRANCH_PREFIX/*` PRs and their approval status.
@@ -69,7 +69,7 @@ Returns JSON with all `$GIT_BRANCH_PREFIX/*` PRs and their approval status.
 
 <step id="2" name="Comment Check and Addressing">
 ```bash
-echo '[{"repo":"...","prNumber":123,"branch":"<prefix>/..."}]' | scripts/pr-land-comments.sh
+echo '[{"repo":"...","prNumber":123,"branch":"<prefix>/..."}]' | ~/.cursor/skills/pr-land/scripts/pr-land-comments.sh
 ```
 
 Returns PRs with unaddressed feedback posted after the last commit. The script checks **three sources**:
@@ -84,7 +84,7 @@ Items previously marked with `<!-- addressed:review:ID -->` or `<!-- addressed:c
 1. AI/bot comments: Already filtered out by the script.
 2. Human reviewer comments on approved PRs — address and set aside:
    1. Read the comment and understand the requested change
-   2. Make the fix as a fixup commit: `~/.cursor/skills/lint-commit.sh --fixup <hash> [files...]`
+   2. Make the fix as a fixup commit: `~/.cursor/skills/im/scripts/lint-commit.sh --fixup <hash> [files...]`
    3. Push the fixup to the branch
    4. Reply on the PR thread explaining what was fixed (1 sentence, factual). Use `gh pr comment <number> --repo EdgeApp/<repo> --body "..."` for top-level comments, or reply to the specific thread if the feedback was inline.
    5. **Remove this PR from the merge set** — it needs re-review after the fixup
@@ -99,7 +99,7 @@ Items previously marked with `<!-- addressed:review:ID -->` or `<!-- addressed:c
 ONE tool call per batch:
 
 ```bash
-echo '[{"repo":"...","branch":"<prefix>/feature"}]' | scripts/pr-land-prepare.sh
+echo '[{"repo":"...","branch":"<prefix>/feature"}]' | ~/.cursor/skills/pr-land/scripts/pr-land-prepare.sh
 ```
 
 The prepare script handles: clone/checkout, autosquash fixups, rebase onto upstream, conflict detection, and verification.
@@ -121,7 +121,7 @@ After prepare succeeds, push with `--force-with-lease`.
 Ask for user confirmation, then:
 
 ```bash
-echo '[{"repo":"...","prNumber":123,"branch":"<prefix>/..."}]' | scripts/pr-land-merge.sh [method]
+echo '[{"repo":"...","prNumber":123,"branch":"<prefix>/..."}]' | ~/.cursor/skills/pr-land/scripts/pr-land-merge.sh [method]
 ```
 
 The merge script processes PRs **sequentially** with automatic rebase-before-merge:
@@ -161,7 +161,7 @@ Publish ready repos to npm? [y/N]
 If confirmed:
 
 ```bash
-echo '[{"repo":"...","branch":"master"}]' | scripts/pr-land-publish.sh
+echo '[{"repo":"...","branch":"master"}]' | ~/.cursor/skills/pr-land/scripts/pr-land-publish.sh
 ```
 
 **Exit codes:**
@@ -191,7 +191,7 @@ Ask user to confirm `npm publish` completed, then:
 
 2. Run `upgrade-dep.sh` for each published package (sequentially):
    ```bash
-   cd <gui-repo-dir> && scripts/upgrade-dep.sh <package-name>
+   cd <gui-repo-dir> && ~/.cursor/skills/pr-land/scripts/upgrade-dep.sh <package-name>
    ```
    If any fails, STOP and report. Ask user how to proceed.
 
@@ -217,7 +217,7 @@ Do NOT update for: skipped PRs, addressed-but-not-re-reviewed PRs, or repos not 
 Pipe the PR metadata through the new helper so you only consume the Asana link once per PR:
 
 ```bash
-printf '[{"repo":"edge-react-gui","prNumber":123}]' | scripts/pr-land-extract-asana-task.sh > /tmp/asana.json
+printf '[{"repo":"edge-react-gui","prNumber":123}]' | ~/.cursor/skills/pr-land/scripts/pr-land-extract-asana-task.sh > /tmp/asana.json
 ```
 
 The helper outputs JSON like `{ "tasks": [{ "taskGid": "...", "label": "repo#123" }], "missing": [{ "label": "...", "reason": "..." }] }`.
@@ -296,7 +296,7 @@ Both prepare and merge scripts can detect CHANGELOG-only conflicts. In either ca
 1. Read CHANGELOG.md with conflict markers
 2. Resolve semantically using StrReplace
 3. `git add CHANGELOG.md && GIT_EDITOR=true git rebase --continue`
-4. Re-run `pr-land-prepare.sh`
+4. Re-run `~/.cursor/skills/pr-land/scripts/pr-land-prepare.sh`
 </sub-step>
 
 <sub-step name="During merge (already pushed, GitHub reports conflict)">
@@ -306,7 +306,7 @@ Both prepare and merge scripts can detect CHANGELOG-only conflicts. In either ca
 4. Resolve semantically using StrReplace
 5. `git add CHANGELOG.md && GIT_EDITOR=true git rebase --continue`
 6. `git push --force-with-lease`
-7. Re-run `pr-land-merge.sh` — verification runs automatically
+7. Re-run `~/.cursor/skills/pr-land/scripts/pr-land-merge.sh` — verification runs automatically
 </sub-step>
 
 Verification checks: no conflict markers remaining, proper entry format (`- type: description`), no malformed entries. If verification fails after resolution, the script prompts the user.
