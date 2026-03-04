@@ -16,7 +16,9 @@ metadata:
 </rules>
 
 <step id="1" name="Extract conversation data">
-Run the companion script on the user-provided export file:
+If no chat export file is provided, assume the user is asking for a chat audit of the current chat session.
+
+If chat export file is provided, run the companion script on the user-provided export file:
 
 ```bash
 scripts/cursor-chat-extract.js <export-file> --tools-only

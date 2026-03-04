@@ -9,12 +9,12 @@ metadata:
 <goal>Address PR feedback with fixup commits, resolving each comment after replying with how it was addressed.</goal>
 
 <rules description="Non-negotiable constraints.">
-<rule id="use-companion-script">Do NOT call `gh` directly. Use `scripts/pr-address.sh` for all GitHub API interactions (it uses `gh` internally).</rule>
+<rule id="use-companion-script">Do NOT call `gh` directly. Use `~/.cursor/skills/pr-address/scripts/pr-address.sh` for all GitHub API interactions (it uses `gh` internally).</rule>
 <rule id="no-script-bypass">If a companion script fails, report the error and STOP. Do NOT fall back to raw `gh`, `curl`, or other workarounds.</rule>
 <rule id="no-git-editor">All git commands that may open an editor (`rebase --continue`, `commit` without `-m`) MUST be prefixed with `GIT_EDITOR=true` to prevent blocking on `COMMIT_EDITMSG` in the IDE.</rule>
 <rule id="no-gitkraken">NEVER use `git_log_or_diff:GitKraken`. Use local `git` commands directly.</rule>
 <rule id="this-file-wins">If any other instruction conflicts with this file, **this file wins** for `pr-address`.</rule>
-<rule id="commit-via-script">Commit fixups using `~/.cursor/skills/lint-commit.sh -m "fixup! {headline}" [files...]`. Do NOT manually run eslint — the commit script handles it.</rule>
+<rule id="commit-via-script">Commit fixups using `~/.cursor/skills/lint-commit.sh --no-reorder -m "fixup! {headline}" [files...]`. `--no-reorder` is required — the default reorder runs `rebase --autosquash` which squashes fixups immediately, conflicting with step 4's conditional autosquash. Do NOT manually run eslint — the commit script handles it.</rule>
 <rule id="script-timeouts">GitHub API scripts can take up to 30s. Set `block_until_ms: 60000` when invoking `pr-address.sh`.</rule>
 <rule id="reply-before-resolve">ALWAYS reply explaining how a comment was addressed BEFORE resolving or marking it. No silent resolutions.</rule>
 <rule id="resolution-source-of-truth">Only explicitly resolved threads (`isResolved: true`) or `<!-- addressed:... -->` markers count as resolved. Recency (commits after a comment) does NOT mean resolved.</rule>
@@ -25,10 +25,10 @@ Always fetch live from GitHub. Run both in parallel:
 
 ```bash
 # Fetch unresolved feedback
-scripts/pr-address.sh fetch --owner <OWNER> --repo <REPO> --pr <NUMBER>
+~/.cursor/skills/pr-address/scripts/pr-address.sh fetch --owner <OWNER> --repo <REPO> --pr <NUMBER>
 
 # Populate /tmp/pr-body.md from the live PR body (source of truth)
-scripts/pr-address.sh fetch-pr-body --owner <OWNER> --repo <REPO> --pr <NUMBER>
+~/.cursor/skills/pr-address/scripts/pr-address.sh fetch-pr-body --owner <OWNER> --repo <REPO> --pr <NUMBER>
 ```
 
 If either script exits code 2 with `PROMPT_GH_AUTH`, prompt: "`gh` CLI is not authenticated. Please run: `gh auth login`"
@@ -52,16 +52,6 @@ gh pr edit <NUMBER> --body-file /tmp/pr-body.md
 <step id="2" name="Process all unresolved feedback">
 Address every item returned by `fetch`. Group inline threads by file. If the user provided specific files, scope to those only.
 
-<sub-step name="Apply fixes">
-1. Read each file with comments
-2. Apply changes — comment hunks can be narrower than intent; apply consistently within the function/file
-3. Commit using `lint-commit.sh`:
-   ```bash
-   ~/.cursor/skills/lint-commit.sh -m "fixup! {targetHeadline}" [files...]
-   ```
-   The script auto-reorders fixups next to their targets (but doesn't squash). Step 4 handles actual squashing when appropriate.
-</sub-step>
-
 <sub-step name="Determine fixup target">
 Ask: **"Which commit introduced the behavior/code this comment is about?"**
 
@@ -76,6 +66,23 @@ Get the target commit headline:
 git log -1 --format='%s' <commit_sha>
 ```
 </sub-step>
+
+<sub-step name="Apply fixes">
+1. Read each file with comments
+2. Apply changes — comment hunks can be narrower than intent; apply consistently within the function/file
+3. Commit using `lint-commit.sh`:
+   ```bash
+   ~/.cursor/skills/lint-commit.sh --no-reorder -m "fixup! {targetHeadline}" [files...]
+   ```
+</sub-step>
+
+<sub-step name="Push fixup commits">
+After all fixup commits are created, push to the remote so the reviewer can see the changes referenced in replies:
+
+```bash
+git push
+```
+</sub-step>
 </step>
 
 <step id="3" name="Reply and resolve each comment">
@@ -84,21 +91,21 @@ After fixing, reply to every processed comment — addressed or rejected — the
 <sub-step name="Inline threads (reply → resolve)">
 1. Reply to the first comment in the thread:
    ```bash
-   scripts/pr-address.sh reply \
+   ~/.cursor/skills/pr-address/scripts/pr-address.sh reply \
      --owner <OWNER> --repo <REPO> --pr <NUMBER> \
      --comment-id <NUMERIC_ID> --body "<what was fixed>"
    ```
 
    If the comment ID is a GraphQL node ID, resolve to numeric first:
    ```bash
-   scripts/pr-address.sh resolve-id \
+   ~/.cursor/skills/pr-address/scripts/pr-address.sh resolve-id \
      --owner <OWNER> --repo <REPO> --pr <NUMBER> \
      --node-id "<PRRC_nodeId>"
    ```
 
 2. Then mark the thread as resolved:
    ```bash
-   scripts/pr-address.sh resolve-thread --thread-id "<PRRT_threadNodeId>"
+   ~/.cursor/skills/pr-address/scripts/pr-address.sh resolve-thread --thread-id "<PRRT_threadNodeId>"
    ```
 </sub-step>
 
@@ -106,7 +113,7 @@ After fixing, reply to every processed comment — addressed or rejected — the
 These have no native resolution mechanism. Post a top-level comment with a machine-readable marker:
 
 ```bash
-scripts/pr-address.sh mark-addressed \
+~/.cursor/skills/pr-address/scripts/pr-address.sh mark-addressed \
   --owner <OWNER> --repo <REPO> --pr <NUMBER> \
   --type <review|comment> --target-id <NUMERIC_ID> \
   --body "<what was fixed>"
@@ -136,12 +143,15 @@ If `hasHumanReviewers` is `true`, **do NOT autosquash**. Leave fixup commits vis
 
 When autosquashing is allowed:
 ```bash
-scripts/pr-address.sh autosquash
+~/.cursor/skills/pr-address/scripts/pr-address.sh autosquash
 ```
 
 If conflicts occur, resolve them, then: `GIT_EDITOR=true git rebase --continue`. If a commit becomes empty after squashing: `git rebase --skip`.
 
-Then force push: `git push --force-with-lease`.
+Force push is required after autosquash because the rebase rewrites history:
+```bash
+git push --force-with-lease
+```
 </step>
 
 <step id="5" name="Verification">
