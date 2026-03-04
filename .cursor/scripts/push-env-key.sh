@@ -6,11 +6,25 @@
 # Examples:
 #   push-env-key.sh EDGE_API_KEY abc123
 #   push-env-key.sh EDGE_API_KEY abc123 -m "Rotate Edge API key"
+#
+# Requires env vars:
+#   ENV_SERVER: SSH hostname for the remote server
+#   ENV_REMOTE_REPO: Path to the remote repository
 
 set -euo pipefail
 
-SERVER="jack"
-REMOTE_REPO="/home/jon/jenkins-files/master"
+if [[ -z "${ENV_SERVER:-}" ]]; then
+  echo "Error: ENV_SERVER not set" >&2
+  exit 1
+fi
+
+if [[ -z "${ENV_REMOTE_REPO:-}" ]]; then
+  echo "Error: ENV_REMOTE_REPO not set" >&2
+  exit 1
+fi
+
+SERVER="$ENV_SERVER"
+REMOTE_REPO="$ENV_REMOTE_REPO"
 
 KEY=""
 VALUE=""

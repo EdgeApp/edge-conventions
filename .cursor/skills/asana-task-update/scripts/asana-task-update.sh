@@ -90,7 +90,8 @@ status_to_gid() {
     "Review Needed") echo "$REVIEW_NEEDED_OPTION" ;;
     "Publish Needed") echo "$PUBLISH_NEEDED_OPTION" ;;
     "Verification Needed") echo "$VERIFICATION_NEEDED_OPTION" ;;
-    *) echo "$1" ;;
+    "$REVIEW_NEEDED_OPTION"|"$PUBLISH_NEEDED_OPTION"|"$VERIFICATION_NEEDED_OPTION") echo "$1" ;;
+    *) echo "Error: Unknown status '$1' (expected name or GID)" >&2; exit 1 ;;
   esac
 }
 
