@@ -94,6 +94,18 @@ Review code changes for quality and convention compliance. Supports both GitHub 
 
 ---
 
+### review-plan
+
+Review a development plan for execution-readiness: specificity on repositories and code, architecture, unit tests, and step-by-step E2E testing (simulator, Maestro). The plan must not leave decision trees or discovery for the executor—all such choices must be resolved before execution.
+
+**Usage**: Provide a path to a plan document (e.g. in `edge-plans`) or paste the plan content.
+
+**Reference**: `edge-plans/2026-02/gravity-bridge-nym-integration.md` (Gravity Bridge NYM integration) is the reference example. Use it when assessing or improving other plans.
+
+**Workflow**: Read plan → Check repository/file specificity, architecture, unit tests, E2E steps, and absence of open discovery → Produce structured review (Summary, findings per section, recommendations, reference sections)
+
+---
+
 ### fix-pr
 
 Address reviewer comments on a GitHub pull request.
