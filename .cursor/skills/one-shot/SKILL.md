@@ -1,7 +1,7 @@
 ---
 name: one-shot
 description: End-to-end flow for a task: plan/context, implementation, PR creation, and Asana attach/assign in one command.
-compatibility: Requires git, gh, node, jq. ASANA_TOKEN for Asana integration. ASANA_GITHUB_SECRET for PR attachment (obtain via https://github.integrations.asana.plus/auth?domainId=ghactions).
+compatibility: Requires git, gh, node, jq. ASANA_TOKEN for Asana integration. ASANA_GITHUB_SECRET for PR attachment.
 metadata:
   author: j0ntz
 ---

@@ -10,7 +10,7 @@ metadata:
 
 <rules>
 <rule id="local-is-canonical">`~/.cursor/` is the canonical source. Edits happen locally; the repo is the distribution copy. Default direction is `user-to-repo`. Use `--repo-to-user` only for onboarding or pulling changes authored by others. The script does not detect bidirectional conflicts — whichever direction you run overwrites the other side.</rule>
-<rule id="use-companion-script">Use `scripts/convention-sync.sh` for diffing and syncing. Do NOT manually diff or copy files.</rule>
+<rule id="use-companion-script">Use `~/.cursor/skills/convention-sync/scripts/convention-sync.sh` for diffing and syncing. Do NOT manually diff or copy files.</rule>
 <rule id="dry-run-first">Always run without `--stage` first to show the summary. Only stage/commit after user confirms.</rule>
 <rule id="no-script-bypass">If the script fails, report the error and STOP.</rule>
 <rule id="readme-is-source">`.cursor/README.md` is the source of truth for documentation. The script mirrors it to the PR description automatically.</rule>
@@ -23,7 +23,7 @@ Determine the repo directory — default to the current working directory if it 
 Run **in parallel**:
 1. Sync script in dry-run mode:
    ```bash
-   scripts/convention-sync.sh <repo-dir>
+   ~/.cursor/skills/convention-sync/scripts/convention-sync.sh <repo-dir>
    ```
 2. Check for open PR:
    ```bash
@@ -57,7 +57,7 @@ If the user provided a commit message in their prompt, skip the confirmation and
 Run the script with `--commit`:
 
 ```bash
-scripts/convention-sync.sh <repo-dir> --commit -m "<message>"
+~/.cursor/skills/convention-sync/scripts/convention-sync.sh <repo-dir> --commit -m "<message>"
 ```
 
 Then push:

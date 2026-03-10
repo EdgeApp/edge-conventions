@@ -119,6 +119,17 @@ Exception: Empty handlers are acceptable ONLY when the rejection is an expected 
 ✅ `const impact = div(sub(from, to), from, 8)`
 </standard>
 
+<standard id="memoize-derived-collections">When deriving arrays or objects from props/state (e.g. `Object.values()`, `Object.keys()`, `.filter()`, `.map()`), wrap in `React.useMemo` if the result is used in a dependency array or passed as a prop. Bare derivations create new references every render.
+❌ `const wallets = Object.values(currencyWallets)` (used in effect deps)
+✅ `const wallets = React.useMemo(() => Object.values(currencyWallets), [currencyWallets])`
+</standard>
+
+<standard id="guard-on-success-not-existence">When guarding against re-fetching with nullable map lookups, check for the success payload specifically — not just entry existence. Storing error results as non-null entries permanently blocks retry if the guard only checks `== null`.
+❌ `if (resultMap[id] == null) fetchData(id)` (error entries block retry)
+✅ `if (resultMap[id]?.data == null) fetchData(id)` (only skip when data is present)
+Exception: Auto-load effects where infinite retry on persistent failure is undesirable — keep `== null` there and allow retry only via explicit user action.
+</standard>
+
 </standards>
 
 <lint-fix-patterns description="Common ESLint fix recipes for this project's config. Apply directly — do not search node_modules for types. The `rule` attribute maps to ESLint rule IDs for automatic matching by `lint-warnings.sh`.">

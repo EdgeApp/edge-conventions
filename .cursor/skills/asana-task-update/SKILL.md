@@ -1,7 +1,7 @@
 ---
 name: asana-task-update
 description: Update Asana tasks via one reusable workflow (attach PRs, assign/unassign, set status, and update task fields). Use when any skill needs to modify Asana task state.
-compatibility: Requires jq. ASANA_TOKEN for Asana API updates. ASANA_GITHUB_SECRET for PR attach operations (obtain via https://github.integrations.asana.plus/auth?domainId=ghactions).
+compatibility: Requires jq. ASANA_TOKEN for Asana API updates. ASANA_GITHUB_SECRET for PR attach operations.
 metadata:
   author: j0ntz
 ---
@@ -11,7 +11,7 @@ metadata:
 <rules description="Non-negotiable constraints.">
 <rule id="use-companion-script">Use `~/.cursor/skills/asana-task-update/scripts/asana-task-update.sh` for all Asana task mutations. Do not call raw Asana APIs directly from skills that can delegate here.</rule>
 <rule id="task-required">Every operation requires `--task <task_gid>`.</rule>
-<rule id="attach-requires-secret">`--attach-pr` requires `ASANA_GITHUB_SECRET` (obtain via OAuth: https://github.integrations.asana.plus/auth?domainId=ghactions). Other operations require `ASANA_TOKEN`.</rule>
+<rule id="attach-requires-secret">`--attach-pr` requires `ASANA_GITHUB_SECRET`. Other operations require `ASANA_TOKEN`.</rule>
 <rule id="prompt-codes">If the script exits code 2 with `PROMPT_REVIEWER` or `PROMPT_IMPLEMENTOR`, ask the user and re-run with explicit `--reviewer` or `--implementor`.</rule>
 <rule id="script-timeouts">Asana updates can take time. Use `block_until_ms: 120000` for script calls.</rule>
 </rules>

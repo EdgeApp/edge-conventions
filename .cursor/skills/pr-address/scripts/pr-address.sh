@@ -5,6 +5,7 @@
 #
 # Subcommands:
 #   fetch          --owner <o> --repo <r> --pr <n>         Fetch all unresolved feedback via GraphQL
+#   fetch-thread   --owner <o> --repo <r> --pr <n> --thread-id <id>
 #   reply          --owner <o> --repo <r> --pr <n> --comment-id <id> --body <text>
 #   resolve-thread --thread-id <node_id>                   Mark inline thread as resolved (GraphQL)
 #   mark-addressed --owner <o> --repo <r> --pr <n> --type <review|comment> --target-id <id> --body <text>
@@ -179,6 +180,61 @@ case "$CMD" in
     "
     ;;
 
+  fetch-thread)
+    require_gh
+    if [[ -z "$OWNER" || -z "$REPO" || -z "$PR" || -z "$THREAD_ID" ]]; then
+      echo "Error: --owner, --repo, --pr, --thread-id required" >&2; exit 1
+    fi
+
+    gh api graphql \
+      -f query='query($owner: String!, $repo: String!, $number: Int!) {
+        repository(owner: $owner, name: $repo) {
+          pullRequest(number: $number) {
+            reviewThreads(first: 100) {
+              nodes {
+                id
+                isResolved
+                comments(first: 50) {
+                  nodes {
+                    databaseId
+                    createdAt
+                    author { login }
+                    path
+                    line
+                    body
+                  }
+                }
+              }
+            }
+          }
+        }
+      }' \
+      -f owner="$OWNER" -f repo="$REPO" -F number="$PR" \
+    | GH_THREAD_ID="$THREAD_ID" node -e "
+      const fs = require('fs')
+      const data = JSON.parse(fs.readFileSync('/dev/stdin', 'utf8'))
+      const threads = data.data.repository.pullRequest.reviewThreads.nodes
+      const thread = threads.find(item => item.id === process.env.GH_THREAD_ID)
+      if (thread == null) {
+        console.error('Thread not found: ' + process.env.GH_THREAD_ID)
+        process.exit(1)
+      }
+
+      console.log(JSON.stringify({
+        threadId: thread.id,
+        isResolved: thread.isResolved,
+        path: thread.comments.nodes[0]?.path ?? null,
+        line: thread.comments.nodes[0]?.line ?? null,
+        comments: thread.comments.nodes.map(comment => ({
+          id: comment.databaseId,
+          user: comment.author?.login ?? null,
+          body: comment.body,
+          createdAt: comment.createdAt
+        }))
+      }, null, 2))
+    "
+    ;;
+
   reply)
     require_gh
     if [[ -z "$OWNER" || -z "$REPO" || -z "$PR" || -z "$COMMENT_ID" || -z "$BODY" ]]; then
@@ -269,7 +325,7 @@ case "$CMD" in
     ;;
 
   *)
-    echo "Usage: pr-address.sh {fetch|reply|resolve-thread|mark-addressed|resolve-id|headline|fetch-pr-body|autosquash} [args]" >&2
+    echo "Usage: pr-address.sh {fetch|fetch-thread|reply|resolve-thread|mark-addressed|resolve-id|headline|fetch-pr-body|autosquash} [args]" >&2
     exit 1
     ;;
 esac

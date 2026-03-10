@@ -64,7 +64,7 @@ while true; do
   NOW=$(date '+%H:%M:%S')
 
   # Parse recommended interval from script output
-  RECOMMENDED=$(echo "$OUTPUT" | sed -n 's/^# interval:\([0-9][0-9]*\)/\1/p' | head -n 1)
+  RECOMMENDED=$(echo "$OUTPUT" | grep -oP '(?<=^# interval:)\d+' || echo "")
 
   # Determine actual sleep interval
   if [[ -n "$INTERVAL" ]]; then

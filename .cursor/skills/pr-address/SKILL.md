@@ -42,6 +42,14 @@ The `fetch` output contains:
 - **reviewBodies**: Latest review body per non-author reviewer (excludes `prAuthor` and bots)
 - **topLevel**: Top-level comments (excludes `prAuthor` and bots)
 
+To inspect a specific inline thread, including an already-resolved one, use:
+
+```bash
+~/.cursor/skills/pr-address/scripts/pr-address.sh fetch-thread \
+  --owner <OWNER> --repo <REPO> --pr <NUMBER> \
+  --thread-id "<PRRT_threadNodeId>"
+```
+
 The `fetch-pr-body` call writes the current PR body to `/tmp/pr-body.md`. This file is available for editing throughout the session. If you need to update the PR body (e.g. to revise the description after addressing feedback), edit `/tmp/pr-body.md` via the Write tool and push it back:
 
 ```bash
@@ -89,6 +97,16 @@ git push
 After fixing, reply to every processed comment — addressed or rejected — then resolve it.
 
 <sub-step name="Inline threads (reply → resolve)">
+If a later fix may affect an already-addressed inline thread, inspect the thread first:
+
+```bash
+~/.cursor/skills/pr-address/scripts/pr-address.sh fetch-thread \
+  --owner <OWNER> --repo <REPO> --pr <NUMBER> \
+  --thread-id "<PRRT_threadNodeId>"
+```
+
+Use the returned history to decide whether the existing reply still fully reflects the latest fix. If it does not, add one new factual follow-up reply. Multiple replies in the same thread are acceptable when they capture materially new fixes.
+
 1. Reply to the first comment in the thread:
    ```bash
    ~/.cursor/skills/pr-address/scripts/pr-address.sh reply \
@@ -120,6 +138,8 @@ These have no native resolution mechanism. Post a top-level comment with a machi
 ```
 
 The script appends `<!-- addressed:review:ID -->` or `<!-- addressed:comment:ID -->` to the body. Subsequent `fetch` calls detect these markers and exclude already-addressed items.
+
+**Skip bot-only no-op items**: If a review body or top-level comment is from a bot user (e.g., `cursor`, `chatgpt-codex-connector`) AND contains no inline threads with actionable suggestions — only a summary or status message — do NOT post a `mark-addressed` comment. Human reviewer items must always be addressed or rejected, even terse ones like "This needs work".
 </sub-step>
 
 <sub-step name="Reply guidelines">
@@ -175,4 +195,5 @@ Propose modifications to `~/.cursor/rules/typescript-standards.mdc` to prevent s
 <case name="No unresolved feedback">Report "No unresolved comments on this PR" and STOP.</case>
 <case name="External human reviewer comments">Do NOT autosquash when `hasHumanReviewers` is true. Leave fixup commits for the external reviewer to verify, then squash on merge.</case>
 <case name="Comment already addressed in code">If the current code already handles the feedback (e.g., from a previous fixup), still reply explaining this and resolve/mark the comment. Do not leave it unresolved.</case>
+<case name="Already resolved thread needs follow-up">Fetch the thread history first. If the prior reply no longer reflects the latest fix, post one additional factual follow-up reply. Do not edit or delete prior replies in this workflow.</case>
 </edge-cases>
