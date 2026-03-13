@@ -91,7 +91,7 @@ All GitHub API operations use **`gh` CLI** (`gh api`, `gh api graphql`, `gh pr`)
 | [`/asana-task-update`](.cursor/skills/asana-task-update/SKILL.md) | Generic Asana mutations (attach PR, assign, status/field updates) |
 | [`/standup`](.cursor/skills/standup/SKILL.md) | Generate daily standup from Asana + GitHub activity |
 | [`/chat-audit`](.cursor/skills/chat-audit/SKILL.md) | Audit chat sessions for workflow/rule issues |
-| [`/convention-sync`](.cursor/skills/convention-sync/SKILL.md) | Sync `~/.cursor` changes with this repo and update PR description |
+| [`/convention-sync`](.cursor/skills/convention-sync/SKILL.md) | Sync `~/.cursor` changes with the `edge-conventions` repo and update PR description |
 | [`/author`](.cursor/skills/author/SKILL.md) | Create/update/debug skills and related scripts/rules |
 
 ---
@@ -102,7 +102,7 @@ All GitHub API operations use **`gh` CLI** (`gh api`, `gh api graphql`, `gh pr`)
 
 | Script | What it does | API |
 |--------|-------------|-----|
-| [`pr-create.sh`](.cursor/skills/pr-create/scripts/pr-create.sh) | Create PR for current branch with auto-generated title/body | `gh pr create` |
+| [`pr-create.sh`](.cursor/skills/pr-create/scripts/pr-create.sh) | Create PR for current branch with repo-template-aligned title/body | `gh pr create` |
 | [`pr-address.sh`](.cursor/skills/pr-address/scripts/pr-address.sh) | Fetch unresolved feedback, post replies, resolve threads, mark addressed | `gh api` REST + GraphQL |
 | [`github-pr-review.sh`](.cursor/skills/pr-review/scripts/github-pr-review.sh) | Fetch PR context (metadata + patches) and submit reviews | `gh pr view` + `gh api` REST |
 | [`github-pr-activity.sh`](.cursor/skills/standup/scripts/github-pr-activity.sh) | List PRs by activity (recent reviews, comments, CI status) | `gh api graphql` |
@@ -151,8 +151,8 @@ These scripts run sequentially. Each handles one phase of the landing workflow:
 
 | Script | What it does |
 |--------|-------------|
-| [`lint-commit.sh`](.cursor/skills/lint-commit.sh) | ESLint `--fix` before commit, auto-runs `update-eslint-warnings` when available |
-| [`lint-warnings.sh`](.cursor/skills/im/scripts/lint-warnings.sh) | Update `eslint-warnings.mdc` knowledge base from current lint output |
+| [`lint-commit.sh`](.cursor/skills/lint-commit.sh) | ESLint `--fix`, localize, graduate warnings, and report effective commit scope before commit |
+| [`lint-warnings.sh`](.cursor/skills/im/scripts/lint-warnings.sh) | Run `eslint --fix`, then summarize any remaining lint findings with matched fix patterns |
 | [`install-deps.sh`](.cursor/skills/install-deps.sh) | Install dependencies and run prepare script |
 | [`upgrade-dep.sh`](.cursor/skills/pr-land/scripts/upgrade-dep.sh) | Upgrade a dependency in the GUI repo |
 

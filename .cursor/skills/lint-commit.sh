@@ -13,6 +13,12 @@
 #   --reorder      After fixup commit, rebase to place it after its target (default: true)
 #   --no-reorder   Skip the reorder rebase
 #
+# If files are given, they are the primary scope for linting/committing.
+# The script may also auto-include generated companion files like:
+#   - src/locales/strings
+#   - eslint.config.mjs
+#   - __snapshots__/*.snap
+# Any additional non-generated files are reported before commit.
 # If no files are given, all staged + unstaged + untracked changes are used.
 # The script will:
 #   1. Run eslint --fix on .ts/.tsx files
@@ -29,6 +35,7 @@ MESSAGE=""
 FIXUP=""
 REORDER="true"  # Default to reordering fixups
 FILES=()
+PRIMARY_SCOPE_DECLARED="false"
 
 while [[ $# -gt 0 ]]; do
   case "$1" in
@@ -54,6 +61,10 @@ while [[ $# -gt 0 ]]; do
       ;;
   esac
 done
+
+if [[ ${#FILES[@]} -gt 0 ]]; then
+  PRIMARY_SCOPE_DECLARED="true"
+fi
 
 if [[ -z "$MESSAGE" && -z "$FIXUP" ]]; then
   echo "Error: -m \"commit message\" or --fixup <hash> is required" >&2
@@ -171,7 +182,7 @@ if node -e "process.exit(require('./package.json').scripts?.localize ? 0 : 1)" 2
   yarn localize
 fi
 
-# Step 4: Stage everything and commit
+# Step 4: Stage everything and report effective commit scope
 echo ">> git add -A && git commit"
 git add -A
 
@@ -179,6 +190,61 @@ git add -A
 if node -e "process.exit(require('./package.json').scripts?.['update-eslint-warnings'] ? 0 : 1)" 2>/dev/null; then
   echo ">> update-eslint-warnings"
   npm run --silent update-eslint-warnings
+fi
+
+if [[ "$PRIMARY_SCOPE_DECLARED" == "true" ]]; then
+  echo ">> commit scope report"
+  node -e '
+const { execSync } = require("child_process")
+
+const requested = [...new Set(process.argv.slice(1))].sort()
+const staged = execSync("git diff --cached --name-only --diff-filter=ACMRD", {
+  encoding: "utf8"
+})
+  .split("\n")
+  .map(line => line.trim())
+  .filter(Boolean)
+  .sort()
+
+const requestedSet = new Set(requested)
+const isGeneratedCompanion = file => {
+  return (
+    file === "eslint.config.mjs" ||
+    file === "src/locales/strings" ||
+    /(^|\/)__snapshots__\/.*\.snap$/.test(file)
+  )
+}
+
+const requestedStaged = []
+const generatedStaged = []
+const extraStaged = []
+for (const file of staged) {
+  if (requestedSet.has(file)) {
+    requestedStaged.push(file)
+  } else if (isGeneratedCompanion(file)) {
+    generatedStaged.push(file)
+  } else {
+    extraStaged.push(file)
+  }
+}
+
+const missingRequested = requested.filter(file => !staged.includes(file))
+
+const printGroup = (title, files) => {
+  if (files.length === 0) return
+  console.log(title)
+  for (const file of files) console.log("- " + file)
+}
+
+printGroup("Primary scope staged:", requestedStaged)
+printGroup("Auto-generated companion files staged:", generatedStaged)
+printGroup("Additional non-generated files staged:", extraStaged)
+printGroup("Requested files not staged:", missingRequested)
+
+if (extraStaged.length > 0) {
+  console.log("Proceeding with additional non-generated files by default.")
+}
+' -- "${FILES[@]}"
 fi
 
 if [[ -n "$FIXUP" ]]; then
@@ -197,6 +263,10 @@ if [[ ${#LINT_FILES[@]} -gt 0 && -x ./node_modules/.bin/jest ]]; then
   if [[ -n "$SNAP_CHANGES" ]]; then
     echo ">> Snapshots updated, amending commit:"
     echo "$SNAP_CHANGES"
+    if [[ "$PRIMARY_SCOPE_DECLARED" == "true" ]]; then
+      echo ">> Auto-generated companion files staged:"
+      echo "$SNAP_CHANGES"
+    fi
     git add -A
     git commit --amend --no-edit --no-verify
   else

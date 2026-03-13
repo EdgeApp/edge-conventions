@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # convention-sync.sh — Sync ~/.cursor/ files with the edge-conventions repo.
-# Usage: ./convention-sync.sh <repo-dir> [--stage] [--commit -m "message"] [--repo-to-user]
+# Usage: ./convention-sync.sh [repo-dir] [--stage] [--commit -m "message"] [--repo-to-user]
 # Compares ~/.cursor/{skills,rules,scripts} against <repo-dir>/.cursor/ and
 # outputs a structured JSON summary of new, modified, and deleted files.
 # With --stage: copies changed files and stages them in git (or copies to user dir with --repo-to-user).
@@ -18,6 +18,56 @@ DO_COMMIT=false
 COMMIT_MSG=""
 DIRECTION="user-to-repo"
 
+resolve_default_repo_dir() {
+  local cwd remote_url default_repo
+
+  cwd="$(pwd)"
+  if [[ "$(basename "$cwd")" == "edge-conventions" ]]; then
+    printf '%s\n' "$cwd"
+    return 0
+  fi
+
+  if git -C "$cwd" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    remote_url="$(git -C "$cwd" remote get-url origin 2>/dev/null || true)"
+    if [[ "$remote_url" == *"edge-conventions"* ]]; then
+      printf '%s\n' "$cwd"
+      return 0
+    fi
+  fi
+
+  default_repo="$HOME/git/edge-conventions"
+  if [[ -d "$default_repo/.git" || -f "$default_repo/.git" ]]; then
+    printf '%s\n' "$default_repo"
+    return 0
+  fi
+
+  return 1
+}
+
+validate_repo_dir() {
+  local repo_dir remote_url
+  repo_dir="$1"
+
+  if [[ ! -d "$repo_dir/.cursor" ]]; then
+    echo "ERROR: Repo directory must contain .cursor/: $repo_dir" >&2
+    return 1
+  fi
+
+  if [[ "$(basename "$repo_dir")" == "edge-conventions" ]]; then
+    return 0
+  fi
+
+  if git -C "$repo_dir" rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+    remote_url="$(git -C "$repo_dir" remote get-url origin 2>/dev/null || true)"
+    if [[ "$remote_url" == *"edge-conventions"* ]]; then
+      return 0
+    fi
+  fi
+
+  echo "ERROR: Repo directory does not appear to be the edge-conventions checkout: $repo_dir" >&2
+  return 1
+}
+
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --stage) DO_STAGE=true; shift ;;
@@ -29,7 +79,14 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ -z "$REPO_DIR" ]]; then
-  echo "Usage: convention-sync.sh <repo-dir> [--stage] [--commit -m \"message\"]" >&2
+  if ! REPO_DIR="$(resolve_default_repo_dir)"; then
+    echo "ERROR: Could not resolve the edge-conventions repo. Run with an explicit repo path." >&2
+    echo "Usage: convention-sync.sh [repo-dir] [--stage] [--commit -m \"message\"]" >&2
+    exit 1
+  fi
+fi
+
+if ! validate_repo_dir "$REPO_DIR"; then
   exit 1
 fi
 
@@ -191,6 +248,7 @@ if [[ "$DO_STAGE" == true && "$total" -gt 0 ]]; then
 fi
 
 jq -n \
+  --arg repoDir "$REPO_DIR" \
   --argjson new "$new_json" \
   --argjson modified "$mod_json" \
   --argjson deleted "$del_json" \
@@ -198,4 +256,4 @@ jq -n \
   --argjson total "$total" \
   --arg staged "$DO_STAGE" \
   --arg committed "$DO_COMMIT" \
-  '{total: $total, new: $new, modified: $modified, deleted: $deleted, ignored: $ignored, staged: ($staged == "true"), committed: ($committed == "true")}'
+  '{repoDir: $repoDir, total: $total, new: $new, modified: $modified, deleted: $deleted, ignored: $ignored, staged: ($staged == "true"), committed: ($committed == "true")}'

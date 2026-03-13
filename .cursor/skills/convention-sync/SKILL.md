@@ -15,22 +15,25 @@ metadata:
 <rule id="no-script-bypass">If the script fails, report the error and STOP.</rule>
 <rule id="readme-is-source">`.cursor/README.md` is the source of truth for documentation. The script mirrors it to the PR description automatically.</rule>
 <rule id="claude-compat">Every run ensures `~/.claude/skills` symlinks to `~/.cursor/skills` and regenerates `~/.claude/CLAUDE.md` from `alwaysApply: true` rules. This enables OpenCode and Claude Code to discover skills and rules without separate config.</rule>
+<rule id="target-repo-resolution">For user-to-repo sync, target the `edge-conventions` checkout. Do NOT assume the current repo is correct just because it contains a `.cursor/` folder. Let the companion script resolve and validate the repo path.</rule>
 </rules>
 
 <step id="1" name="Detect changes and PR status">
-Determine the repo directory — default to the current working directory if it contains a `.cursor/` folder, otherwise use the `edge-conventions` checkout.
+Use the companion script's default repo resolution first. It targets the `edge-conventions` checkout and fails if the resolved or provided repo is not actually `edge-conventions`.
 
-Run **in parallel**:
-1. Sync script in dry-run mode:
-   ```bash
-   ~/.cursor/skills/convention-sync/scripts/convention-sync.sh <repo-dir>
-   ```
-2. Check for open PR:
-   ```bash
-   cd <repo-dir> && gh pr view --json number,url --jq '{number: .number, url: .url}' 2>/dev/null || echo '{}'
-   ```
+Run the sync script in dry-run mode:
 
-Parse the JSON output. If `total` is 0, report "Everything is in sync" and stop.
+```bash
+~/.cursor/skills/convention-sync/scripts/convention-sync.sh
+```
+
+Parse the JSON output and extract `repoDir`. Then check for an open PR:
+
+```bash
+cd <repo-dir> && gh pr view --json number,url --jq '{number: .number, url: .url}' 2>/dev/null || echo '{}'
+```
+
+Use the resolved repo path from the script for subsequent git and PR commands. If the script reports `total` as 0, report "Everything is in sync" and stop.
 </step>
 
 <step id="2" name="Present summary">
@@ -75,6 +78,8 @@ cd <repo-dir> && gh pr edit --body-file .cursor/README.md
 
 <edge-cases>
 <case name="Reverse sync (repo → user)">If the user says "pull from repo" or "update my local", run with `--repo-to-user --stage` instead. No git operations needed.</case>
+<case name="Current repo has a .cursor folder but is not edge-conventions">Do not sync into that repo. Fall back to `~/git/edge-conventions` or ask for the correct repo path.</case>
+<case name="Dry-run resolved a repo path">Reuse the `repoDir` value from the script's JSON output for the PR query, commit run, push, and PR edit steps.</case>
 <case name="Selective sync">To permanently exclude files, add glob patterns to `~/.cursor/.syncignore` (one per line, `#` comments). The script skips matching entries and reports them in the `ignored` array. To exclude ad-hoc, remove files from staging with `git reset HEAD .cursor/<file>` before committing.</case>
 <case name="No README">If `.cursor/README.md` doesn't exist, skip PR description update and warn the user.</case>
 </edge-cases>

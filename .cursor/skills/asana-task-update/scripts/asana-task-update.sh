@@ -16,6 +16,7 @@ PR_NUMBER=""
 
 DO_ASSIGN=false
 ASSIGN_GID=""
+SKIP_ASSIGN_IF_MISSING=false
 DO_UNASSIGN=false
 
 SET_STATUS=""
@@ -41,6 +42,7 @@ while [[ $# -gt 0 ]]; do
         shift
       fi
       ;;
+    --skip-assign-if-missing) SKIP_ASSIGN_IF_MISSING=true; shift ;;
     --unassign) DO_UNASSIGN=true; shift ;;
     --set-status) SET_STATUS="$2"; shift 2 ;;
     --set-reviewer|--reviewer) SET_REVIEWER_GID="$2"; shift 2 ;;
@@ -143,26 +145,33 @@ if $DO_ASSIGN; then
     ASSIGN_GID="${SET_REVIEWER_GID:-$(read_people_field "$REVIEWER_FIELD")}"
   fi
   if [[ -z "$ASSIGN_GID" ]]; then
-    echo ">> PROMPT_REVIEWER"
-    exit 2
-  fi
-
-  if [[ -z "$SET_REVIEWER_GID" ]]; then
-    SET_REVIEWER_GID="$ASSIGN_GID"
-  fi
-
-  if [[ -z "$SET_IMPLEMENTOR_GID" ]]; then
-    SET_IMPLEMENTOR_GID="$(read_people_field "$IMPLEMENTOR_FIELD")"
-  fi
-  if [[ -z "$SET_IMPLEMENTOR_GID" ]]; then
-    SET_IMPLEMENTOR_GID="$("$SCRIPT_DIR/../../asana-whoami.sh" 2>/dev/null || true)"
-    if [[ -n "$SET_IMPLEMENTOR_GID" ]]; then
-      echo ">> Implementor: auto-resolved to current user ($SET_IMPLEMENTOR_GID)"
+    if $SKIP_ASSIGN_IF_MISSING; then
+      echo ">> Assignee: skipped (no reviewer provided or found on task)"
+      DO_ASSIGN=false
+    else
+      echo ">> PROMPT_REVIEWER"
+      exit 2
     fi
   fi
-  if [[ -z "$SET_IMPLEMENTOR_GID" ]]; then
-    echo ">> PROMPT_IMPLEMENTOR"
-    exit 2
+
+  if $DO_ASSIGN; then
+    if [[ -z "$SET_REVIEWER_GID" ]]; then
+      SET_REVIEWER_GID="$ASSIGN_GID"
+    fi
+
+    if [[ -z "$SET_IMPLEMENTOR_GID" ]]; then
+      SET_IMPLEMENTOR_GID="$(read_people_field "$IMPLEMENTOR_FIELD")"
+    fi
+    if [[ -z "$SET_IMPLEMENTOR_GID" ]]; then
+      SET_IMPLEMENTOR_GID="$("$SCRIPT_DIR/../../asana-whoami.sh" 2>/dev/null || true)"
+      if [[ -n "$SET_IMPLEMENTOR_GID" ]]; then
+        echo ">> Implementor: auto-resolved to current user ($SET_IMPLEMENTOR_GID)"
+      fi
+    fi
+    if [[ -z "$SET_IMPLEMENTOR_GID" ]]; then
+      echo ">> PROMPT_IMPLEMENTOR"
+      exit 2
+    fi
   fi
 fi
 

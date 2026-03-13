@@ -27,6 +27,123 @@ function git(cmd) {
   return execSync(`git ${cmd}`, { encoding: "utf8" }).trim();
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+function countOccurrences(haystack, needle) {
+  const matches = haystack.match(new RegExp(escapeRegExp(needle), "g"));
+  return matches == null ? 0 : matches.length;
+}
+
+function hasSection(bodyText, heading) {
+  return new RegExp(`^${escapeRegExp(heading)}$`, "m").test(bodyText);
+}
+
+function extractTemplateHeadings(templateBody) {
+  return Array.from(templateBody.matchAll(/^### .+$/gm), match => match[0]);
+}
+
+function setChecklistValue(bodyText, label, checked) {
+  const pattern = new RegExp(
+    `^- \\[[ x]\\] ${escapeRegExp(label)}$`,
+    "m"
+  );
+  return bodyText.replace(pattern, `- [${checked ? "x" : " "}] ${label}`);
+}
+
+function appendDescriptionSection(bodyText, description) {
+  if (description === "") return bodyText.trimEnd();
+  return `${bodyText.trimEnd()}\n\n### Description\n\n${description}`;
+}
+
+function insertAfterHeading(bodyText, heading, insertText) {
+  const headingPattern = new RegExp(
+    `^${escapeRegExp(heading)}\\n`,
+    "m"
+  );
+  const match = headingPattern.exec(bodyText);
+  if (match == null) return null;
+
+  const afterHeading = match.index + match[0].length;
+  const rest = bodyText.slice(afterHeading).replace(/^\n*/, "");
+  return (
+    bodyText.slice(0, afterHeading) +
+    `\n${insertText}\n\n` +
+    rest
+  );
+}
+
+function buildDescriptionFromCommits() {
+  try {
+    const log = git(`log origin/${defaultBranch}..HEAD --format=%B---`);
+    const messages = log
+      .split("---")
+      .map(message => message.trim())
+      .filter(Boolean);
+
+    if (messages.length === 1) {
+      const parts = messages[0].split("\n").filter(Boolean);
+      return parts.length > 1 ? parts.slice(1).join("\n") : "none";
+    }
+
+    return "none";
+  } catch {
+    return "none";
+  }
+}
+
+function loadRepoTemplate() {
+  const templatePath = path.join(process.cwd(), ".github", "PULL_REQUEST_TEMPLATE.md");
+  if (!fs.existsSync(templatePath)) return null;
+
+  return {
+    path: templatePath,
+    body: fs.readFileSync(templatePath, "utf8").replace(/\r\n/g, "\n").trim()
+  };
+}
+
+function buildBodyFromTemplate(templateBody) {
+  let rendered = templateBody;
+
+  if (hasSection(rendered, "### CHANGELOG")) {
+    rendered = setChecklistValue(rendered, "Yes", hasChangelog);
+    rendered = setChecklistValue(rendered, "No", !hasChangelog);
+  }
+
+  const description = buildDescriptionFromCommits();
+  return hasSection(rendered, "### Description")
+    ? rendered
+    : appendDescriptionSection(rendered, description);
+}
+
+function validateBodyForTemplate(bodyText, templateInfo) {
+  if (templateInfo == null) return;
+
+  const templateHeadings = extractTemplateHeadings(templateInfo.body);
+  const missingHeadings = templateHeadings.filter(
+    heading => !hasSection(bodyText, heading)
+  );
+  if (missingHeadings.length > 0) {
+    console.error(
+      "ERROR: PR body is missing required template headings from " +
+        `${templateInfo.path}: ${missingHeadings.join(", ")}`
+    );
+    process.exit(1);
+  }
+
+  const genericSections = [];
+  if (/^## Summary$/m.test(bodyText)) genericSections.push("## Summary");
+  if (/^## Test plan$/m.test(bodyText)) genericSections.push("## Test plan");
+  if (genericSections.length > 0) {
+    console.error(
+      "ERROR: PR body uses generic sections for a repo with a PR template: " +
+        genericSections.join(", ")
+    );
+    process.exit(1);
+  }
+}
+
 function requireGh() {
   const check = spawnSync("gh", ["auth", "status"], { encoding: "utf8" });
   if (check.status !== 0) {
@@ -71,6 +188,16 @@ try {
   }
 }
 
+let hasChangelog = false;
+try {
+  const diff = git(`diff origin/${defaultBranch}..HEAD -- CHANGELOG.md`);
+  hasChangelog =
+    diff.includes("## Unreleased") ||
+    /^\+- (added|changed|fixed):/m.test(diff);
+} catch {}
+
+const templateInfo = loadRepoTemplate();
+
 // Build title from commits/branch if not provided
 if (!title) {
   try {
@@ -95,64 +222,19 @@ if (!title) {
 // Read body from file if provided
 let body = bodyFile ? fs.readFileSync(bodyFile, "utf8") : null;
 
-function countOccurrences(haystack, needle) {
-  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const matches = haystack.match(new RegExp(escaped, "g"));
-  return matches == null ? 0 : matches.length;
-}
-
-function countOccurrences(haystack, needle) {
-  const escaped = needle.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-  const matches = haystack.match(new RegExp(escaped, "g"));
-  return matches == null ? 0 : matches.length;
-}
-
 // Build body from template if not provided
 if (!body) {
-  const isGui = repo === "edge-react-gui";
-  let hasChangelog = false;
-  try {
-    const diff = git(`diff origin/${defaultBranch}..HEAD -- CHANGELOG.md`);
-    hasChangelog =
-      diff.includes("## Unreleased") ||
-      /^\+- (added|changed|fixed):/m.test(diff);
-  } catch {}
-
-  const yes = hasChangelog ? "x" : " ";
-  const no = hasChangelog ? " " : "x";
-
   body =
-    `### CHANGELOG\n\n` +
-    `Does this branch warrant an entry to the CHANGELOG?\n\n` +
-    `- [${yes}] Yes\n- [${no}] No\n\n` +
-    `### Dependencies\n\nnone\n\n### Description\n\n`;
-
-  try {
-    const log = git(`log origin/${defaultBranch}..HEAD --format=%B---`);
-    const messages = log
-      .split("---")
-      .map((m) => m.trim())
-      .filter(Boolean);
-    if (messages.length === 1) {
-      const parts = messages[0].split("\n").filter(Boolean);
-      body += parts.length > 1 ? parts.slice(1).join("\n") : "none";
-    } else {
-      body += "none";
-    }
-  } catch {
-    body += "none";
-  }
-
-  if (isGui) {
-    body +=
-      `\n\n### Requirements\n\n` +
-      `If you have made **any** visual changes to the GUI. Make sure you have:\n\n` +
-      `- [ ] Tested on iOS device\n` +
-      `- [ ] Tested on Android device\n` +
-      `- [ ] Tested on small-screen device (iPod Touch)\n` +
-      `- [ ] Tested on large-screen device (tablet)`;
-  }
+    templateInfo == null
+      ? `### CHANGELOG\n\n` +
+        `Does this branch warrant an entry to the CHANGELOG?\n\n` +
+        `- [${hasChangelog ? "x" : " "}] Yes\n` +
+        `- [${hasChangelog ? " " : "x"}] No\n\n` +
+        `### Dependencies\n\nnone\n\n### Description\n\n${buildDescriptionFromCommits()}`
+      : buildBodyFromTemplate(templateInfo.body);
 }
+
+validateBodyForTemplate(body, templateInfo);
 
 // Guardrail: fail fast if the body appears to include duplicate templates.
 // This prevents accidental append/concatenation from creating malformed PR descriptions.
@@ -199,14 +281,9 @@ if (asanaTask) {
   const asanaRegex = new RegExp(`https://app\\.asana\\.com/\\d+/\\d+/(?:task/)?${asanaTask}`, "i");
   if (!asanaRegex.test(body)) {
     const link = `[Asana task](${asanaUrl})`;
-    const descIdx = body.indexOf("### Description\n");
-    if (descIdx !== -1) {
-      const afterHeader = descIdx + "### Description\n".length;
-      const rest = body.slice(afterHeader).replace(/^\n*/, "");
-      body = body.slice(0, afterHeader) + `\n${link}\n\n` + rest;
-    } else {
-      body = `${link}\n\n` + body;
-    }
+    body =
+      insertAfterHeading(body, "### Description", link) ??
+      appendDescriptionSection(body, link);
   }
 }
 

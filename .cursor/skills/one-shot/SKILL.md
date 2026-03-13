@@ -11,8 +11,10 @@ metadata:
 <rules description="Non-negotiable constraints.">
 <rule id="orchestrate-existing-skills">Do not re-implement logic already defined in `/asana-plan`, `/im`, or `/pr-create`. Delegate to those skills.</rule>
 <rule id="attach-and-assign-default">By default, invoke `/pr-create` with both `--asana-attach` and `--asana-assign`.</rule>
+<rule id="hands-off-assignment">This workflow is hands-off. If reviewer assignment cannot be resolved from task state or explicit input, let `/pr-create` skip assignment rather than pausing for reviewer input.</rule>
 <rule id="task-gid-required-for-asana-flags">If Asana attach/assign flags are active, a task GID must be available from the Asana URL input or explicit `--asana-task` flag; otherwise fail fast.</rule>
 <rule id="no-script-bypass">If any delegated skill or companion script fails, report and stop. Do not bypass with manual alternatives.</rule>
+<rule id="pr-body-owned-by-pr-create">Do not draft alternate PR markdown formats inside this workflow. `/pr-create` owns PR body generation and template compliance.</rule>
 </rules>
 
 <step id="1" name="Collect input">

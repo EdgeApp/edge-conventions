@@ -12,7 +12,7 @@ metadata:
 <rule id="use-companion-script">Use `~/.cursor/skills/asana-task-update/scripts/asana-task-update.sh` for all Asana task mutations. Do not call raw Asana APIs directly from skills that can delegate here.</rule>
 <rule id="task-required">Every operation requires `--task <task_gid>`.</rule>
 <rule id="attach-requires-secret">`--attach-pr` requires `ASANA_GITHUB_SECRET`. Other operations require `ASANA_TOKEN`.</rule>
-<rule id="prompt-codes">If the script exits code 2 with `PROMPT_REVIEWER` or `PROMPT_IMPLEMENTOR`, ask the user and re-run with explicit `--reviewer` or `--implementor`.</rule>
+<rule id="prompt-codes">If the script exits code 2 with `PROMPT_REVIEWER` or `PROMPT_IMPLEMENTOR`, ask the user and re-run with explicit `--reviewer` or `--implementor`. Hands-off callers may instead pass `--skip-assign-if-missing` to convert missing-reviewer assignment into a non-blocking skip.</rule>
 <rule id="script-timeouts">Asana updates can take time. Use `block_until_ms: 120000` for script calls.</rule>
 </rules>
 
@@ -29,6 +29,12 @@ metadata:
   --attach-pr --pr-url <url> --pr-title "<title>" --pr-number <num> \
   --assign --set-status "Review Needed" --auto-est-review-hrs
 
+# Hands-off attach + best-effort assign (skip if reviewer missing)
+~/.cursor/skills/asana-task-update/scripts/asana-task-update.sh \
+  --task <task_gid> \
+  --attach-pr --pr-url <url> --pr-title "<title>" --pr-number <num> \
+  --assign --skip-assign-if-missing --set-status "Review Needed" --auto-est-review-hrs
+
 # Publish Needed -> Verification Needed (and unassign)
 ~/.cursor/skills/asana-task-update/scripts/asana-task-update.sh \
   --task <task_gid> \
@@ -41,6 +47,7 @@ Determine which updates are needed by the caller and build one command with all 
 
 - `--attach-pr --pr-url --pr-title --pr-number`
 - `--assign` or `--assign <user_gid>`
+- `--skip-assign-if-missing`
 - `--unassign`
 - `--set-status "Review Needed|Publish Needed|Verification Needed"`
 - `--set-reviewer <user_gid>`
@@ -59,6 +66,8 @@ If exit code is 2:
 
 - `PROMPT_REVIEWER`: ask who to assign, then re-run with `--reviewer <gid>` and `--assign`
 - `PROMPT_IMPLEMENTOR`: ask who to set as implementor, then re-run with `--implementor <gid>`
+
+If the caller used `--skip-assign-if-missing`, do not ask about `PROMPT_REVIEWER` because the script will not emit it for missing-reviewer cases.
 </step>
 
 <step id="4" name="Report result">
