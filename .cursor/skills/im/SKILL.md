@@ -81,6 +81,8 @@ If the script auto-fixes files or remaining findings exist:
 `lint-commit.sh` treats passed file arguments as the primary commit scope, auto-includes generated companion files like `src/locales/strings`, `eslint.config.mjs`, and snapshots, and reports any additional non-generated files it stages.
 
 This ensures the subsequent feature commit introduces zero pre-existing lint findings. This is the initial pass — if you discover additional files to modify during Step 3, the same check applies (see Step 3).
+
+**Warning graduation (edge-react-gui)**: `edge-react-gui` has a suppression list in `eslint.config.mjs` that turns `explicit-function-return-type`, `strict-boolean-expressions`, `use-unknown-in-catch-callback-variable`, and `ban-ts-comment` to warning severity for ~300+ files. When `lint-commit.sh` commits a file, `update-eslint-warnings.ts` removes it from this list — "graduating" the file to full error enforcement. If a graduated file has pre-existing violations on lines you touched, `lint-commit.sh` Step 2b will block the commit. Running `lint-warnings.sh` here in Step 2 catches and fixes these issues before graduation occurs.
 </step>
 
 <step id="3" name="Implementation">

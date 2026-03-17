@@ -7,42 +7,81 @@ description: Fix ESLint warnings by applying documented patterns. Use when addre
 
 <rules description="Non-negotiable constraints.">
 <rule id="tsc-after-fix">Run `npx tsc --noEmit` after every type change to verify no new type errors are introduced.</rule>
-<rule id="no-suppress">Do not suppress deprecation warnings with `eslint-disable` comments. Fix the underlying type reference.</rule>
+<rule id="no-suppress">Do not suppress deprecation warnings with `eslint-disable` comments. Fix the underlying type reference.
+Exception: `NavigationBase` deprecation in shared cross-navigator code (Categories C, D, F below) is accepted — not suppressed, genuinely not fixable without a broader v7 navigation migration. When the fix scope is too broad, add a TODO comment documenting the required migration pattern and accept the warning.</rule>
 <rule id="scope-control">Only modify files with deprecation warnings. Do not refactor downstream declarations unless required for the fix to compile.</rule>
 </rules>
 
 <patterns>
 
 <pattern id="navigation-base" rule="@typescript-eslint/no-deprecated" symbol="NavigationBase">
-`NavigationBase` is a flat navigation type that predates react-navigation's composite `XyzSceneProps` types. It cannot be replaced with scene-specific types in shared code due to variance constraints in composite navigation props.
+`NavigationBase` is a flat navigation type hack in `routerTypes.tsx` that unions all navigator param lists (`RootParamList & DrawerParamList & EdgeAppStackParamList & ...`) to pretend the app is flat. It is deprecated because it tracks **react-navigation v7 breaking changes**:
 
-**In scene components** (call sites):
-Replace `navigation as NavigationBase` casts with `navigation as AppNavigation`:
+1. `navigate()` no longer crosses nested navigator boundaries at runtime.
+2. `navigate()` no longer goes back to an existing screen to update params — use `popTo()` or `navigate(screen, params, { pop: true })` instead.
 
+v7 provides `navigateDeprecated()` and `navigationInChildEnabled` as temporary bridges, both removed in v8. **Do NOT create non-deprecated aliases** (like `AppNavigation`) — this hides a real migration requirement.
+
+Fix `NavigationBase` deprecation by identifying which category the usage falls into:
+
+**Category A — Pass-through props** (component accepts `NavigationBase` only to forward it to children or actions):
+- Fix: Remove the `navigation` prop. Callers already have navigation in scope. If the child needs navigation, it should use `useNavigation()` or accept specific callbacks.
 ```typescript
-// Before
-import type { NavigationBase } from '../../types/routerTypes'
-activateWalletTokens(navigation as NavigationBase, wallet, [tokenId])
+// Before — CancellableProcessingScene accepts navigation to forward to onError
+interface Props { navigation: NavigationBase; onError: (nav: NavigationBase, err: unknown) => void }
 
-// After
-import type { AppNavigation } from '../../types/routerTypes'
-activateWalletTokens(navigation as AppNavigation, wallet, [tokenId])
+// After — remove navigation prop, callers handle navigation in callbacks
+interface Props { onError: (err: unknown) => Promise<void> }
 ```
 
-**In shared actions/utilities** (declaration sites):
-Replace `NavigationBase` parameter types with `AppNavigation`:
-
+**Category B — Direct navigation in non-scene components** (component accepts `NavigationBase`, calls `navigate()`/`push()` directly):
+- Fix: Replace `navigation: NavigationBase` prop with `useNavigation()` hook typed to the navigator context the component lives in. Or replace with specific navigation callbacks from the parent scene.
 ```typescript
-// Before
-import type { NavigationBase } from '../types/routerTypes'
-export function myAction(navigation: NavigationBase): ThunkAction<...> {
+// Before — BalanceCard accepts NavigationBase, calls navigate directly
+interface Props { navigation: NavigationBase }
+const BalanceCard: React.FC<Props> = props => {
+  props.navigation.push('send2', { walletId, tokenId })
+}
 
-// After
-import type { AppNavigation } from '../types/routerTypes'
-export function myAction(navigation: AppNavigation): ThunkAction<...> {
+// After (option 1) — useNavigation hook
+const BalanceCard: React.FC<Props> = props => {
+  const navigation = useNavigation<EdgeAppSceneProps<'home'>['navigation']>()
+  navigation.push('send2', { walletId, tokenId })
+}
+
+// After (option 2) — navigation callbacks
+interface Props { onSend: (walletId: string, tokenId: EdgeTokenId) => void }
 ```
+- If the fix would cascade to many callers or require determining the correct navigator context across multiple usages, add a `// TODO: Replace NavigationBase with useNavigation() or callbacks. Requires v7 navigation migration.` comment and move on.
 
-**Why `as` casts are still required**: Composite scene navigation types (e.g. `WalletsTabSceneProps<'transactionList'>['navigation']`) are not structurally assignable to flat navigation types due to `PrivateValueStore` phantom types and contravariance in `dispatch`. The cast is the intended escape hatch.
+**Category C — Shared action/thunk functions** (functions in `src/actions/` accept `NavigationBase`):
+- Fix: Invert control. Replace the `navigation: NavigationBase` parameter with a callback for the navigation action the function needs.
+```typescript
+// Before — function navigates internally
+function activateWalletTokens(navigation: NavigationBase, wallet, tokenIds): ThunkAction<Promise<void>> {
+  // ... calls navigation.navigate('editToken', ...) internally
+}
+
+// After — caller provides the navigate action
+function activateWalletTokens(wallet, tokenIds, onNavigate: (route: string, params: object) => void): ThunkAction<Promise<void>> {
+  // ... calls onNavigate('editToken', ...) instead
+}
+```
+- Simpler alternative for single-navigate functions: Return the target route + params instead of navigating; let the caller dispatch.
+- If the function has many navigate calls to different screens or the refactoring would touch many callers, add a `// TODO: Remove NavigationBase dependency. Requires inversion of navigation control for v7 migration.` comment and move on.
+
+**Category D — Shared modal components** (modals accept `NavigationBase`, navigate after user interaction):
+- Fix: Modal returns a result via Airship bridge resolve; caller handles navigation based on the result. Or modal accepts navigation callbacks.
+- If the modal's navigation logic is complex (multiple paths), add a comment and move on.
+
+**Category E — Scene component casts** (`navigation as NavigationBase`):
+- These casts exist because the scene passes navigation to a Category A-D consumer.
+- Fix: No direct fix needed — casts disappear automatically when the consumer is migrated.
+- If the scene has its own `NavigationBase` usage unrelated to shared code, apply Category B fix.
+
+**Category F — Service components** (non-scene services: `DeepLinkingManager`, `AccountCallbackManager`, etc.):
+- These are the broadest migration cases. Always add: `// TODO: Remove NavigationBase dependency. Requires broader v7 navigation migration for service-level navigation.`
+- Do not attempt to fix these incrementally — they are cross-cutting and require dedicated migration work.
 </pattern>
 
 <pattern id="route-prop" rule="@typescript-eslint/no-deprecated" symbol="RouteProp">

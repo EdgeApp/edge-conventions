@@ -183,7 +183,7 @@ Fix: Add return type annotation. Common types:
 
 <pattern id="no-deprecated" rule="@typescript-eslint/no-deprecated">Using deprecated API.
 Fix: Check the deprecation message for the replacement API. Common replacements:
-- `NavigationBase` → `EdgeAppSceneProps<'routeName'>['navigation']`
+- `NavigationBase` → Read `/fix-eslint` skill `navigation-base` pattern for category-based fix guidance
 - `uniqueIdentifier` → `EdgeSpendInfo.memos`
 - `memo` → `EdgeSpendInfo.memos`
 - `networkFee` / `parentNetworkFee` → `networkFees`
@@ -201,6 +201,13 @@ Fix: Rename handler to match the prop pattern.
 <pattern id="react-fc-component" rule="edge/react-fc-component-definition">Components should use `React.FC<Props>` pattern.
 ❌ `const Component = (props: Props): React.ReactElement => {`
 ✅ `export const Component: React.FC<Props> = props => {`
+</pattern>
+
+<pattern id="generic-component-fc-exception" rule="edge/react-fc-component-definition">Generic components cannot use `React.FC` because it does not support type parameters.
+If the generic is not essential (type param only used internally, can be collapsed into a concrete type), remove the generic and convert to `React.FC<Props>`.
+If the generic is essential (callers rely on type inference, e.g. `<EdgeCarousel<MyItem> ...>`), keep the function declaration form with an explicit return type. The warning is accepted.
+✅ `export function MyComponent<T>(props: Props<T>): React.ReactElement {`
+❌ Converting an essential generic to `React.FC` — this loses type safety for callers.
 </pattern>
 
 <pattern id="no-styled" rule="no-restricted-syntax">Avoid `styled()` wrapper components.

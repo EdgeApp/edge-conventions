@@ -6,7 +6,7 @@ metadata:
   author: j0ntz
 ---
 
-<goal>Analyze a Cursor chat export to identify inefficiencies, rule violations, and wasted tool calls against the invoked command's workflow.</goal>
+<goal>Analyze current chat or provided Cursor chat export to identify inefficiencies, rule violations, and wasted tool calls against the invoked command's workflow.</goal>
 
 <rules description="Non-negotiable constraints.">
 <rule id="use-companion-script">Use `scripts/cursor-chat-extract.js` to parse the export. Do NOT parse the raw JSON inline — it is deeply nested and will consume excessive context.</rule>
