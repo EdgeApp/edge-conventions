@@ -1,0 +1,10 @@
+---
+description: Guidance for addressing ESLint warnings in the codebase
+globs: ["**/*.ts", "**/*.tsx"]
+alwaysApply: false
+---
+
+# ESLint Warning Fixes
+
+- Skip deprecation warnings (`@typescript-eslint/no-deprecated`) unless explicitly asked to address them.
+- After addressing warnings, run `yarn update-eslint-warnings` to update the baseline.

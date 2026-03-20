@@ -1,0 +1,18 @@
+---
+description: Detect questions in prompts and answer them before making changes
+alwaysApply: true
+---
+
+# Answer Questions Before Acting
+
+Before using any code editing tools, scan the user's message for `?` characters and determine if it's a question.
+
+- **Ignore** `?` inside code, URLs or query parameters (e.g. `?param=x`, `?key=value` , `const x = ifTrue ? 'yes' : 'no'`)
+- **Treat all other `?`** as question statements, if they appear to be questions.
+
+If questions are detected:
+
+1. Read `~/.cursor/skills/q/SKILL.md` and follow its workflow to answer every question.
+2. **Workflow context**: If a skill was invoked earlier in this conversation, note which one. When a question or critique references agent behavior from that execution, load the skill definition before answering and evaluate whether the skill should have governed that behavior. If it should have but didn't, that's a workflow gap — treat it as the primary concern per `fix-workflow-first.mdc`.
+3. Do **not** edit files, create files, or run mutating commands until the user responds.
+4. Only proceed with implementation after the user permits it in a follow-up message.

@@ -1,0 +1,169 @@
+model_list:
+  # --- 1M context models (NEED clamping) ---
+
+  - model_name: claude-opus-4-6
+    litellm_params:
+      model: openai/claude-opus-4-6
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+    model_info:
+      max_tokens: 8192
+
+  - model_name: claude-sonnet-4-6
+    litellm_params:
+      model: openai/claude-sonnet-4-6
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+    model_info:
+      max_tokens: 8192
+
+  - model_name: gemini-3-1-pro-preview
+    litellm_params:
+      model: openai/gemini-3-1-pro-preview
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+    model_info:
+      max_tokens: 8192
+
+  # --- ≤256k context models (pass-through, no clamping needed) ---
+
+  - model_name: claude-opus-45
+    litellm_params:
+      model: openai/claude-opus-45
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: claude-sonnet-45
+    litellm_params:
+      model: openai/claude-sonnet-45
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: openai-gpt-52
+    litellm_params:
+      model: openai/openai-gpt-52
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: openai-gpt-52-codex
+    litellm_params:
+      model: openai/openai-gpt-52-codex
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: openai-gpt-oss-120b
+    litellm_params:
+      model: openai/openai-gpt-oss-120b
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: grok-41-fast
+    litellm_params:
+      model: openai/grok-41-fast
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: grok-code-fast-1
+    litellm_params:
+      model: openai/grok-code-fast-1
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: gemini-3-pro-preview
+    litellm_params:
+      model: openai/gemini-3-pro-preview
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: gemini-3-flash-preview
+    litellm_params:
+      model: openai/gemini-3-flash-preview
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: deepseek-v3.2
+    litellm_params:
+      model: openai/deepseek-v3.2
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: kimi-k2-thinking
+    litellm_params:
+      model: openai/kimi-k2-thinking
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: kimi-k2-5
+    litellm_params:
+      model: openai/kimi-k2-5
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: minimax-m21
+    litellm_params:
+      model: openai/minimax-m21
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: minimax-m25
+    litellm_params:
+      model: openai/minimax-m25
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: zai-org-glm-5
+    litellm_params:
+      model: openai/zai-org-glm-5
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: zai-org-glm-4.7
+    litellm_params:
+      model: openai/zai-org-glm-4.7
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: qwen3-coder-480b-a35b-instruct
+    litellm_params:
+      model: openai/qwen3-coder-480b-a35b-instruct
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: qwen3-235b-a22b-thinking-2507
+    litellm_params:
+      model: openai/qwen3-235b-a22b-thinking-2507
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: qwen3-235b-a22b-instruct-2507
+    litellm_params:
+      model: openai/qwen3-235b-a22b-instruct-2507
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: qwen3-vl-235b-a22b
+    litellm_params:
+      model: openai/qwen3-vl-235b-a22b
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: llama-3.3-70b
+    litellm_params:
+      model: openai/llama-3.3-70b
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: hermes-3-llama-3.1-405b
+    litellm_params:
+      model: openai/hermes-3-llama-3.1-405b
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+  - model_name: google-gemma-3-27b-it
+    litellm_params:
+      model: openai/google-gemma-3-27b-it
+      api_base: https://api.venice.ai/api/v1
+      api_key: os.environ/VENICE_API_KEY
+
+router_settings:
+  enable_pre_call_checks: true
