@@ -1,16 +1,19 @@
 #!/usr/bin/env bash
 # lint-warnings.sh
 # Run eslint --fix on files and match any remaining findings to documented fix
-# patterns.
+# patterns. Detects files that will be "graduated" from the ESLint warning
+# suppression list when committed, promoting their suppressed-rule warnings to
+# errors so they can be fixed before commit.
 #
 # Usage:
 #   lint-warnings.sh <file1> [file2] ...
 #
 # Output:
 #   1. Summary of auto-fixes applied (if any)
-#   2. Summary of remaining findings per rule/severity
-#   3. Matched patterns from typescript-standards.mdc (full XML blocks)
-#   4. Unmatched rules (need new patterns added)
+#   2. Graduation warnings (files that will be promoted to error severity)
+#   3. Summary of remaining findings per rule/severity
+#   4. Matched patterns from typescript-standards.mdc (full XML blocks)
+#   5. Unmatched rules (need new patterns added)
 #
 # Exit codes:
 #   0 - No remaining lint findings after auto-fix
@@ -92,23 +95,59 @@ if (!Array.isArray(results)) {
   process.exit(2);
 }
 
+// --- Graduation detection ---
+// Parse eslint.config.mjs to find files in the warning-suppression list.
+// These files currently have certain rules at "warn" severity, but committing
+// them removes them from the list (via update-eslint-warnings), promoting
+// those rules to "error". We detect this ahead of time so the agent can fix
+// them in a lint-fix commit before the feature commit.
+const GRADUATED_RULES = new Set([
+  "@typescript-eslint/ban-ts-comment",
+  "@typescript-eslint/explicit-function-return-type",
+  "@typescript-eslint/strict-boolean-expressions",
+  "@typescript-eslint/use-unknown-in-catch-callback-variable"
+]);
+
+const suppressedFiles = new Set();
+try {
+  const configPath = path.join(process.cwd(), "eslint.config.mjs");
+  const configContent = fs.readFileSync(configPath, "utf8");
+  // Extract file paths from the suppression block (single-quoted strings)
+  for (const m of configContent.matchAll(/^\s+\x27([^\x27]+)\x27,?\s*$/gm)) {
+    suppressedFiles.add(m[1]);
+  }
+} catch (error) {
+  // No eslint.config.mjs or parse failure — skip graduation detection
+}
+
 const findingsBySeverity = new Map([
   [2, new Map()],
   [1, new Map()]
 ]);
 let totalErrors = 0;
 let totalWarnings = 0;
+let graduatedCount = 0;
 let autoFixedFiles = 0;
 
 for (const file of results) {
   if (file != null && typeof file.output === "string") autoFixedFiles += 1;
 
   const rel = path.relative(process.cwd(), file.filePath);
+  const willGraduate = suppressedFiles.has(rel);
+
   for (const message of file.messages) {
     if (message.severity !== 1 && message.severity !== 2) continue;
 
-    const findingsForSeverity = findingsBySeverity.get(message.severity);
     const rule = message.ruleId || "unknown";
+
+    // Promote suppressed-rule warnings to errors for files that will graduate
+    let effectiveSeverity = message.severity;
+    if (willGraduate && message.severity === 1 && GRADUATED_RULES.has(rule)) {
+      effectiveSeverity = 2;
+      graduatedCount += 1;
+    }
+
+    const findingsForSeverity = findingsBySeverity.get(effectiveSeverity);
     if (!findingsForSeverity.has(rule)) {
       findingsForSeverity.set(rule, []);
     }
@@ -118,8 +157,8 @@ for (const file of results) {
       message: message.message
     });
 
-    if (message.severity === 2) totalErrors += 1;
-    if (message.severity === 1) totalWarnings += 1;
+    if (effectiveSeverity === 2) totalErrors += 1;
+    else totalWarnings += 1;
   }
 }
 
@@ -131,6 +170,10 @@ if (eslintExit > 1 && totalErrors === 0 && totalWarnings === 0) {
 
 if (autoFixedFiles > 0) {
   console.log(`>> Auto-fixed ${autoFixedFiles} file(s)`);
+}
+
+if (graduatedCount > 0) {
+  console.log(`>> ${graduatedCount} warning(s) promoted to errors (graduation: file will be removed from suppression list on commit)`);
 }
 
 if (totalErrors === 0 && totalWarnings === 0) {

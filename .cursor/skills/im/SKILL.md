@@ -63,26 +63,26 @@ If the task spans multiple repos, note the additional repos but implement in the
 This script:
 
 1. Runs `eslint --fix`
-2. Shows any remaining lint findings grouped by rule
-3. Outputs matching fix patterns from `~/.cursor/rules/typescript-standards.mdc`
-4. Flags unmatched rules that need new patterns added
+2. Detects files that will be "graduated" from the warning suppression list on commit, promoting their suppressed-rule warnings to errors in the output
+3. Shows any remaining findings grouped by rule (with graduation promotions already applied)
+4. Outputs matching fix patterns from `~/.cursor/rules/typescript-standards.mdc`
+5. Flags unmatched rules that need new patterns added
 
 If the script auto-fixes files or remaining findings exist:
 
-1. Apply fixes for the remaining findings using the matched patterns in the output
-2. For **unmatched rules**: After fixing, add a new `<pattern id="..." rule="...">` to `typescript-standards.mdc` so future occurrences have guidance
-3. Commit the pre-existing lint changes separately:
+1. Fix all reported **errors** first — these include graduation-promoted warnings that will block `lint-commit.sh` after the file is removed from the suppression list
+2. Fix remaining **warnings** using the matched patterns in the output
+3. For **unmatched rules**: After fixing, add a new `<pattern id="..." rule="...">` to `typescript-standards.mdc` so future occurrences have guidance
+4. Commit the pre-existing lint changes separately:
    ```bash
    ~/.cursor/skills/lint-commit.sh -m "Fix lint warnings in <ComponentName>" <file1> <file2> ...
    ```
 
 **Architectural vs mechanical fixes**: If a pattern notes "architectural change" (e.g., `styled()` refactoring), flag to user rather than fixing inline — these changes have broader impact and may warrant separate discussion.
 
-`lint-commit.sh` treats passed file arguments as the primary commit scope, auto-includes generated companion files like `src/locales/strings`, `eslint.config.mjs`, and snapshots, and reports any additional non-generated files it stages.
+`lint-commit.sh` treats passed file arguments as the primary commit scope and only stages those files plus generated companion files (`src/locales/strings`, `eslint.config.mjs`, snapshots). It does not stage unrelated dirty files in the working tree.
 
 This ensures the subsequent feature commit introduces zero pre-existing lint findings. This is the initial pass — if you discover additional files to modify during Step 3, the same check applies (see Step 3).
-
-**Warning graduation (edge-react-gui)**: `edge-react-gui` has a suppression list in `eslint.config.mjs` that turns `explicit-function-return-type`, `strict-boolean-expressions`, `use-unknown-in-catch-callback-variable`, and `ban-ts-comment` to warning severity for ~300+ files. When `lint-commit.sh` commits a file, `update-eslint-warnings.ts` removes it from this list — "graduating" the file to full error enforcement. If a graduated file has pre-existing violations on lines you touched, `lint-commit.sh` Step 2b will block the commit. Running `lint-warnings.sh` here in Step 2 catches and fixes these issues before graduation occurs.
 </step>
 
 <step id="3" name="Implementation">
@@ -138,9 +138,13 @@ Other repos only have `## Unreleased` — no staging distinction.
 1. **Check for an open PR**: Run `gh pr view --json url,reviews 2>/dev/null` to determine if a PR exists and whether it has human review comments.
 2. **If a PR exists with human review comments**, skip cleanup — rewriting history would lose review context. Note the pending cleanup in the retrospective.
 3. **Otherwise (no PR, or PR with no human reviews)**, always perform ALL applicable cleanup automatically:
-   - **Fixup commits exist**: Autosquash with `GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base-branch>`. Do this immediately — never leave fixup commits unsquashed.
-   - **Structural issues** (add-then-remove cycles, misplaced changes, commits that should be squashed, CHANGELOG in intermediate commits): Use scripted `GIT_SEQUENCE_EDITOR` to drop, reorder, or squash commits, resolving conflicts as needed. Verify the final tree matches the pre-restructure state with `git diff`.
-   - **Git lock conflicts**: VSCode's built-in git integration may race with rebase operations, creating `.git/index.lock` files. Always run `rm -f .git/index.lock` before any `git rebase` command to prevent stalls. If a rebase step fails with "index.lock: File exists", remove the lock and `git rebase --continue`.
+   - **Fixup commits exist**: Autosquash with `rm -f .git/index.lock && GIT_SEQUENCE_EDITOR=true git rebase -i --autosquash <base-branch>`. Do this immediately — never leave fixup commits unsquashed.
+   - **Reorder commits**: Use the companion script to reorder commits to the desired order. Hashes are oldest-to-newest:
+     ```bash
+     ~/.cursor/skills/im/scripts/reorder-commits.sh <base-branch> <hash1> <hash2> ...
+     ```
+     The script handles index lock cleanup, awk-based reordering, and verifies the tree is unchanged afterward.
+   - **Structural issues** (add-then-remove cycles, misplaced changes, commits that should be squashed, CHANGELOG in intermediate commits): Use `reorder-commits.sh` for reordering. For squash/drop operations, use `rm -f .git/index.lock && GIT_SEQUENCE_EDITOR="..." git rebase -i <base-branch>` with an awk or sed script. Verify the final tree matches the pre-restructure state with `git diff`.
      </step>
 
 <step id="5" name="Verification">

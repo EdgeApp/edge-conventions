@@ -130,6 +130,29 @@ Exception: Empty handlers are acceptable ONLY when the rejection is an expected 
 Exception: Auto-load effects where infinite retry on persistent failure is undesirable — keep `== null` there and allow retry only via explicit user action.
 </standard>
 
+<standard id="file-structure">Component files (`.tsx`) and utility files (`.ts`) follow a consistent section ordering.
+
+**File-level ordering:**
+1. Imports
+2. Types / Interfaces — exported types first, then internal `Props`
+3. Constants
+4. Main component (`export const Scene: React.FC<Props>`)
+5. Sub-components (internal, non-exported)
+6. Styles (`getStyles` / `cacheStyles`)
+7. Helpers / utility functions — pure functions at the very end of the file
+
+**Component body ordering:**
+1. Props destructuring
+2. Theme / styles (`useTheme`, `getStyles`)
+3. State (`useState`)
+4. Refs (`useRef`)
+5. Selectors (`useSelector`, `useWatch`)
+6. Derived values / `useMemo`
+7. Handlers (`useHandler`)
+8. Effects (`useEffect`, `useBackEvent`)
+9. Return JSX
+</standard>
+
 </standards>
 
 <lint-fix-patterns description="Common ESLint fix recipes for this project's config. Apply directly — do not search node_modules for types. The `rule` attribute maps to ESLint rule IDs for automatic matching by `lint-warnings.sh`.">

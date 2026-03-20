@@ -182,9 +182,25 @@ if node -e "process.exit(require('./package.json').scripts?.localize ? 0 : 1)" 2
   yarn localize
 fi
 
-# Step 4: Stage everything and report effective commit scope
-echo ">> git add -A && git commit"
-git add -A
+# Step 4: Stage files and report effective commit scope
+if [[ "$PRIMARY_SCOPE_DECLARED" == "true" ]]; then
+  echo ">> git add (scoped) && git commit"
+  git add -- "${FILES[@]}"
+  # Stage generated companion files if they have changes
+  for companion in eslint.config.mjs; do
+    if [[ -f "$companion" ]] && ! git diff --quiet -- "$companion" 2>/dev/null; then
+      git add -- "$companion"
+    fi
+  done
+  # Stage locales/strings if yarn localize changed them (already git-added by
+  # yarn localize in some repos, but ensure they're staged)
+  if git diff --quiet --cached -- src/locales/strings 2>/dev/null; then
+    git diff --quiet -- src/locales/strings 2>/dev/null || git add -- src/locales/strings/ 2>/dev/null || true
+  fi
+else
+  echo ">> git add -A && git commit"
+  git add -A
+fi
 
 # Graduate files from eslint warning-override list if the repo has the script
 if node -e "process.exit(require('./package.json').scripts?.['update-eslint-warnings'] ? 0 : 1)" 2>/dev/null; then
@@ -267,7 +283,7 @@ if [[ ${#LINT_FILES[@]} -gt 0 && -x ./node_modules/.bin/jest ]]; then
       echo ">> Auto-generated companion files staged:"
       echo "$SNAP_CHANGES"
     fi
-    git add -A
+    git add -- $SNAP_CHANGES
     git commit --amend --no-edit --no-verify
   else
     echo ">> No snapshot changes"
