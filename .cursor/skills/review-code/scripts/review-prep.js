@@ -1,9 +1,26 @@
 #!/usr/bin/env node
 'use strict'
 
-const { execSync } = require('child_process')
-const path = require('path')
+// Prepare a code review: resolve what is being reviewed, write its diff to
+// disk, pick the review subagents, and gather prior review comments.
+//
+//   node review-prep.js [--base <ref>] [--repo-dir <path>] <input>
+//
+// <input> is one of:
+//   https://github.com/<owner>/<repo>/pull/<n>   a pull request
+//   <n> | #<n>                                    a pull request in the repo at --repo-dir / cwd
+//   <A>..<B>                                      a commit range: the diff from A to B
+//   <A>...<B>                                     a commit range from merge-base(A, B) to B
+//   <branch>                                      a branch, against its base
+//   current                                       HEAD, against its base (or uncommitted changes)
+//
+// Nothing is checked out, reset, or switched: every diff is computed from
+// refs, so the review is safe to run in a checkout with work in progress.
+// Subagents read files at `headSha` with `git -C <repoDir> show <headSha>:<path>`.
+
+const { execFileSync } = require('child_process')
 const fs = require('fs')
+const path = require('path')
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -12,9 +29,10 @@ const fs = require('fs')
 function ensureGhToken() {
   if (process.env.GH_TOKEN) return
   try {
-    const b64 = execSync(
-      'security find-generic-password -s "gh:github.com" -w 2>/dev/null',
-      { encoding: 'utf8' }
+    const b64 = execFileSync(
+      'security',
+      ['find-generic-password', '-s', 'gh:github.com', '-w'],
+      { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }
     ).trim()
     const match = b64.match(/^go-keyring-base64:(.+)$/)
     if (match) {
@@ -25,23 +43,30 @@ function ensureGhToken() {
   } catch (_) {}
 }
 
-ensureGhToken()
+class PrepError extends Error {}
 
-function run(cmd, opts = {}) {
-  const { cwd, allowFailure, maxBuffer = 50 * 1024 * 1024 } = opts
+/** Run a program with arguments (never through a shell). */
+function run(file, args, opts = {}) {
+  const { cwd, allowFailure } = opts
   try {
-    return execSync(cmd, {
+    return execFileSync(file, args, {
       encoding: 'utf8',
       cwd,
-      maxBuffer,
-      stdio: ['pipe', 'pipe', 'pipe']
-    }).trim()
+      maxBuffer: 200 * 1024 * 1024,
+      stdio: ['ignore', 'pipe', 'pipe']
+    }).replace(/\s+$/, '')
   } catch (e) {
     if (allowFailure) return ''
-    process.stderr.write(`Command failed: ${cmd}\n${e.stderr || e.message}\n`)
-    process.exit(1)
+    throw new PrepError(
+      `Command failed: ${file} ${args.join(' ')}\n${(e.stderr || e.message || '').toString().trim()}`
+    )
   }
 }
+
+const git = (cwd, ...args) => run('git', args, { cwd })
+const tryGit = (cwd, ...args) => run('git', args, { cwd, allowFailure: true })
+const hasRef = (cwd, ref) =>
+  tryGit(cwd, 'rev-parse', '--verify', '-q', `${ref}^{commit}`) !== ''
 
 function log(msg) {
   process.stderr.write(msg + '\n')
@@ -51,322 +76,383 @@ function log(msg) {
 // Input parsing
 // ---------------------------------------------------------------------------
 
-const rawArgs = process.argv.slice(2)
-const flags = {}
-const positional = []
-for (let i = 0; i < rawArgs.length; i++) {
-  if (rawArgs[i] === '--base') flags.base = rawArgs[++i]
-  else positional.push(rawArgs[i])
+function parseArgs(argv) {
+  const flags = {}
+  const positional = []
+  for (let i = 0; i < argv.length; i++) {
+    if (argv[i] === '--base') flags.base = argv[++i]
+    else if (argv[i] === '--repo-dir') flags.repoDir = argv[++i]
+    else positional.push(argv[i])
+  }
+  return { flags, input: positional[0] }
 }
 
-const input = positional[0]
-if (!input) {
-  log('Usage: node review-prep.js [--base <branch>] <pr-url | pr-number | branch-name | "current">')
-  process.exit(1)
-}
-
-let prNumber = null
-let owner = null
-let repo = null
-let prUrl = null
-let branchName = null
-let isLocalBranch = false
-
-const prUrlMatch = input.match(
-  /github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/
-)
-const prNumberMatch = input.match(/^#?(\d+)$/)
-
-if (prUrlMatch) {
-  ;[, owner, repo] = prUrlMatch
-  prNumber = parseInt(prUrlMatch[3])
-  prUrl = `https://github.com/${owner}/${repo}/pull/${prNumber}`
-} else if (prNumberMatch) {
-  prNumber = parseInt(prNumberMatch[1])
-} else if (input === 'current') {
-  isLocalBranch = true
-} else {
-  branchName = input
-  isLocalBranch = true
+function classify(input) {
+  const url = input.match(/github\.com\/([^/]+)\/([^/]+)\/pull\/(\d+)/)
+  if (url) {
+    return { mode: 'pr', owner: url[1], repo: url[2], prNumber: parseInt(url[3]) }
+  }
+  const num = input.match(/^#?(\d+)$/)
+  if (num) return { mode: 'pr', prNumber: parseInt(num[1]) }
+  const range = input.match(/^(.+?)(\.\.\.?)(.+)$/)
+  if (range) {
+    return { mode: 'range', from: range[1], to: range[3], symmetric: range[2] === '...' }
+  }
+  if (input === 'current') return { mode: 'current' }
+  return { mode: 'branch', branch: input }
 }
 
 // ---------------------------------------------------------------------------
 // Repo discovery
 // ---------------------------------------------------------------------------
 
-const conventionsDir = path.resolve(__dirname, '..', '..', '..', '..')
-const reposParent = path.resolve(conventionsDir, '..')
-
-let repoDir
-
-if (isLocalBranch || (!owner && prNumber)) {
-  repoDir = process.cwd()
-  repo = repo || path.basename(repoDir)
-  const remoteUrl = run('git remote get-url origin', {
-    cwd: repoDir,
-    allowFailure: true
-  })
-  const m = remoteUrl.match(/github\.com[:/]([^/]+)\//)
-  owner = owner || (m ? m[1] : 'unknown')
-} else {
-  repoDir = path.join(reposParent, repo)
-  if (!fs.existsSync(repoDir)) {
-    log(`Repository not found at ${repoDir}`)
-    process.exit(1)
-  }
+/** owner/repo from the origin remote, or null. */
+function originSlug(dir) {
+  const url = tryGit(dir, 'remote', 'get-url', 'origin')
+  const m = url.match(/github\.com[:/]([^/]+)\/([^/]+?)(?:\.git)?\/?$/)
+  return m ? { owner: m[1], repo: m[2] } : null
 }
 
-log(`Repo: ${owner}/${repo} at ${repoDir}`)
+/** The repository's own name — the main clone's directory, not a worktree's. */
+function cloneName(dir) {
+  const common = tryGit(dir, 'rev-parse', '--path-format=absolute', '--git-common-dir')
+  return common ? path.basename(path.dirname(common)) : path.basename(dir)
+}
 
-// ---------------------------------------------------------------------------
-// PR metadata & checkout  /  local branch setup
-// ---------------------------------------------------------------------------
-
-let baseBranch
-
-if (prNumber) {
-  log(`Fetching PR #${prNumber}...`)
-  const prMeta = JSON.parse(
-    run(
-      `gh pr view ${prNumber} --repo ${owner}/${repo} ` +
-        '--json headRefName,headRepositoryOwner,baseRefName,url',
-      { cwd: repoDir }
-    )
-  )
-
-  branchName = prMeta.headRefName
-  baseBranch = prMeta.baseRefName
-  const headOwner = prMeta.headRepositoryOwner.login
-  prUrl = prUrl || prMeta.url
-  const isFork = headOwner !== owner
-
-  log(
-    `Base: ${baseBranch}  Head: ${headOwner}:${branchName}  Fork: ${isFork}`
-  )
-
-  run('git fetch origin', { cwd: repoDir })
-
-  if (isFork) {
-    const remotes = run('git remote -v', { cwd: repoDir })
-    if (!remotes.includes(headOwner)) {
-      log(`Adding remote ${headOwner}...`)
-      run(
-        `git remote add ${headOwner} https://github.com/${headOwner}/${repo}.git`,
-        { cwd: repoDir }
-      )
-    }
-    run(`git fetch ${headOwner}`, { cwd: repoDir })
-    run(`git checkout -B pr-${prNumber} ${headOwner}/${branchName}`, {
-      cwd: repoDir
-    })
-  } else {
-    const cur = run('git branch --show-current', {
-      cwd: repoDir,
-      allowFailure: true
-    })
-    if (cur !== branchName) {
-      run(`git checkout -B ${branchName} origin/${branchName}`, {
-        cwd: repoDir
-      })
-    } else {
-      run(`git reset --hard origin/${branchName}`, { cwd: repoDir })
-    }
-  }
-} else {
-  // Local branch
-  if (branchName) {
-    const cur = run('git branch --show-current', {
-      cwd: repoDir,
-      allowFailure: true
-    })
-    if (cur !== branchName) {
-      run(`git checkout ${branchName}`, { cwd: repoDir })
-    }
-  } else {
-    branchName = run('git branch --show-current', { cwd: repoDir })
-  }
-
-  baseBranch =
-    run(
-      "git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@'",
-      { cwd: repoDir, allowFailure: true }
-    ) || 'master'
+function findRepoDir(target, flags, conventionsDir) {
+  if (flags.repoDir) return path.resolve(flags.repoDir)
+  const cwd = process.cwd()
+  if (!target.repo) return cwd
+  const slug = originSlug(cwd)
+  if (slug && slug.repo.toLowerCase() === target.repo.toLowerCase()) return cwd
+  const dir = path.join(path.resolve(conventionsDir, '..'), target.repo)
+  if (!fs.existsSync(dir)) throw new PrepError(`Repository not found at ${dir}`)
+  return dir
 }
 
 // ---------------------------------------------------------------------------
-// Diff generation
+// Base ref
 // ---------------------------------------------------------------------------
 
-log('Generating diff...')
-
-let diff
-let changedFiles
-
-const hasCommits = run(`git log --oneline ${baseBranch}..HEAD`, {
-  cwd: repoDir,
-  allowFailure: true
-})
-
-if (isLocalBranch && !hasCommits) {
-  // Uncommitted-only changes
-  const unstaged = run('git diff', { cwd: repoDir, allowFailure: true })
-  const staged = run('git diff --cached', { cwd: repoDir, allowFailure: true })
-  diff = [unstaged, staged].filter(Boolean).join('\n')
-
-  const uFiles = run('git diff --name-only', {
-    cwd: repoDir,
-    allowFailure: true
-  })
-    .split('\n')
-    .filter(Boolean)
-  const sFiles = run('git diff --cached --name-only', {
-    cwd: repoDir,
-    allowFailure: true
-  })
-    .split('\n')
-    .filter(Boolean)
-  changedFiles = [...new Set([...uFiles, ...sFiles])]
-} else {
-  diff = run(`git diff ${baseBranch}...HEAD`, { cwd: repoDir })
-  changedFiles = run(`git diff --name-only ${baseBranch}...HEAD`, {
-    cwd: repoDir
-  })
-    .split('\n')
-    .filter(Boolean)
+/** A remote-tracking ref for bare branch names ("develop" → "origin/develop"). */
+function normalizeRef(dir, ref) {
+  if (ref !== 'HEAD' && !ref.includes('/') && hasRef(dir, `refs/remotes/origin/${ref}`)) {
+    return `origin/${ref}`
+  }
+  if (!hasRef(dir, ref)) throw new PrepError(`Unknown ref: ${ref}`)
+  return ref
 }
 
-const diffFile = `/tmp/review-${repo}-${prNumber || branchName.replace(/\//g, '-')}.diff`
-fs.writeFileSync(diffFile, diff)
+/**
+ * The branch the head forked from: origin/master or origin/develop, by
+ * merge-base ancestry; origin/HEAD's target when that cannot decide.
+ */
+function defaultBase(dir, head) {
+  const m = hasRef(dir, 'origin/master')
+  const d = hasRef(dir, 'origin/develop')
+  const originHead = tryGit(dir, 'symbolic-ref', '-q', '--short', 'refs/remotes/origin/HEAD')
+  if (m && d) {
+    const mbM = tryGit(dir, 'merge-base', head, 'origin/master')
+    const mbD = tryGit(dir, 'merge-base', head, 'origin/develop')
+    if (mbM && mbD) {
+      if (mbM === mbD) return 'origin/master'
+      if (isAncestor(dir, mbM, mbD)) return 'origin/develop'
+      if (isAncestor(dir, mbD, mbM)) return 'origin/master'
+    }
+  }
+  if (originHead) return originHead
+  if (m) return 'origin/master'
+  if (d) return 'origin/develop'
+  throw new PrepError('Cannot determine the base branch; pass --base <ref>')
+}
 
-const diffStatRaw = run(
-  hasCommits
-    ? `git diff --stat ${baseBranch}...HEAD`
-    : 'git diff --stat',
-  { cwd: repoDir, allowFailure: true }
-)
-const diffSummary = (diffStatRaw.split('\n').pop() || '').trim()
+function isAncestor(dir, a, b) {
+  try {
+    execFileSync('git', ['merge-base', '--is-ancestor', a, b], { cwd: dir, stdio: 'ignore' })
+    return true
+  } catch (_) {
+    return false
+  }
+}
 
-log(`${changedFiles.length} files changed → ${diffFile}`)
+// ---------------------------------------------------------------------------
+// Diff parsing
+// ---------------------------------------------------------------------------
+
+/** Split a unified diff into { newPath: section }, honouring renames. */
+function parseDiffByFile(raw) {
+  const result = {}
+  for (const part of raw.split(/^(?=diff --git )/m)) {
+    if (!part.startsWith('diff --git ')) continue
+    const plus = part.match(/^\+\+\+ b\/(.+)$/m)
+    const renameTo = part.match(/^rename to (.+)$/m)
+    const header = part.match(/^diff --git a\/.+ b\/(.+)$/m)
+    const file = plus ? plus[1] : renameTo ? renameTo[1] : header ? header[1] : null
+    if (file) result[file] = part
+  }
+  return result
+}
 
 // ---------------------------------------------------------------------------
 // Subagent selection
 // ---------------------------------------------------------------------------
 
-log('Selecting subagents...')
-
-function parseDiffByFile(raw) {
-  const result = {}
-  for (const part of raw.split(/^diff --git /m).filter(Boolean)) {
-    const m = part.match(/a\/(.+?) b\//)
-    if (m) result[m[1]] = part
-  }
-  return result
+/** Agent names from .cursor/agents/*.md. */
+function listAgents(conventionsDir) {
+  const dir = path.join(conventionsDir, '.cursor', 'agents')
+  if (!fs.existsSync(dir)) return []
+  return fs
+    .readdirSync(dir)
+    .filter(f => f.endsWith('.md'))
+    .sort()
+    .map(f => {
+      const text = fs.readFileSync(path.join(dir, f), 'utf8')
+      const m = text.match(/^name:\s*(\S+)/m)
+      return m ? m[1] : f.replace(/\.md$/, '')
+    })
 }
 
-const fileDiffs = parseDiffByFile(diff)
+function selectSubagents({ agents, changedFiles, fileDiffs, isServer }) {
+  const filesWithPattern = pattern =>
+    changedFiles.filter(f => fileDiffs[f] && pattern.test(fileDiffs[f]))
+  const tsxFiles = changedFiles.filter(f => /\.tsx$/.test(f))
+  const localeFiles = changedFiles.filter(f => /locale|strings|i18n|l10n|enUS/i.test(f))
+  const serviceFiles = changedFiles.filter(f => /\/services\//i.test(f))
 
-function filesWithPattern(pattern) {
-  return changedFiles.filter(f => fileDiffs[f] && pattern.test(fileDiffs[f]))
-}
-
-const tsxFiles = changedFiles.filter(f => /\.tsx$/.test(f))
-const localeFiles = changedFiles.filter(f =>
-  /locale|strings|i18n|l10n|enUS/i.test(f)
-)
-const serviceFiles = changedFiles.filter(f => /\/services\//i.test(f))
-const hasPm2 = fs.existsSync(path.join(repoDir, 'pm2.json'))
-const isServer = repo.endsWith('-server') || hasPm2
-
-const subagents = {
-  'review-react': tsxFiles.length ? tsxFiles : [],
-
-  'review-async': [
-    ...new Set([
-      ...filesWithPattern(
-        /\b(setInterval|setTimeout|makePeriodicTask)\b|async\s+\w/
+  const rules = {
+    'review-react': () => tsxFiles,
+    'review-async': () => [
+      ...new Set([
+        ...filesWithPattern(/\b(setInterval|setTimeout|makePeriodicTask)\b|async\s+\w/),
+        ...serviceFiles
+      ])
+    ],
+    'review-state': () =>
+      filesWithPattern(/\b(useState|useSelector|useReducer|DataStore)\b|from\s+['"].*redux/),
+    'review-cleaners': () =>
+      filesWithPattern(
+        /\b(asObject|asString|asNumber|asBoolean|asArray|asOptional|asMaybe|asEither|asDate|asJSON|asUnknown|asValue|asMap|asCleaner|uncleaner)\b|from\s+['"]cleaners['"]/
       ),
-      ...serviceFiles
-    ])
-  ],
+    'review-errors': () => filesWithPattern(/\btry\s*\{|\bcatch\s*\(|\bthrow\s|\.\s*catch\s*\(/),
+    'review-strings': () => [...new Set([...tsxFiles, ...localeFiles])],
+    'review-servers': () => (isServer ? changedFiles : false),
+    'review-performance': () =>
+      filesWithPattern(
+        /\b(useWatch|withWallet|YAOB|onBlockHeightChanged|onSyncStatusChanged|onNewTokens|onTransactions|EngineEmitter|BLOCK_HEIGHT_CHANGED|ADDRESSES_CHECKED|TRANSACTIONS|updateBlockHeight|onSeenTxCheckpoint|reportDetectedTokens|onStakingStatusChanged|InteractionManager|transitionStart|currencyWallets|saveWalletLoop|updateQueue|makeEngineEmitter)\b/
+      ),
+    'review-code-quality': () => changedFiles,
+    'review-comments': () => changedFiles,
+    'review-tests': () => changedFiles,
+    'review-pr': () => true,
+    'review-repo': () => true
+  }
 
-  'review-state': filesWithPattern(
-    /\b(useState|useSelector|useReducer|DataStore)\b|from\s+['"].*redux/
-  ),
-
-  'review-cleaners': filesWithPattern(
-    /\b(asObject|asString|asNumber|asBoolean|asArray|asOptional|asMaybe|asEither|asDate|asJSON|asUnknown|asValue|asMap|asCleaner|uncleaner)\b|from\s+['"]cleaners['"]/
-  ),
-
-  'review-errors': filesWithPattern(
-    /\btry\s*\{|\bcatch\s*\(|\bthrow\s|\.\s*catch\s*\(/
-  ),
-
-  'review-strings': [...new Set([...tsxFiles, ...localeFiles])],
-
-  'review-servers': isServer ? changedFiles : false,
-
-  'review-performance': filesWithPattern(
-    /\b(useWatch|withWallet|YAOB|onBlockHeightChanged|onSyncStatusChanged|onNewTokens|onTransactions|EngineEmitter|BLOCK_HEIGHT_CHANGED|ADDRESSES_CHECKED|TRANSACTIONS|updateBlockHeight|onSeenTxCheckpoint|reportDetectedTokens|onStakingStatusChanged|InteractionManager|transitionStart|currencyWallets|saveWalletLoop|updateQueue|makeEngineEmitter)\b/
-  ),
-
-  'review-code-quality': changedFiles,
-  'review-comments': changedFiles,
-  'review-tests': changedFiles,
-  'review-pr': true
+  const subagents = {}
+  for (const name of agents) {
+    if (rules[name]) subagents[name] = rules[name]()
+    else {
+      // A reviewer this script has no rule for still reviews every file.
+      log(`No selection rule for ${name}; giving it every changed file`)
+      subagents[name] = changedFiles
+    }
+  }
+  return subagents
 }
 
 // ---------------------------------------------------------------------------
 // Existing reviews (PRs only)
 // ---------------------------------------------------------------------------
 
-let existingReviews = []
-
-if (prNumber) {
-  log('Fetching existing reviews...')
-  const revJson = run(
-    `gh api repos/${owner}/${repo}/pulls/${prNumber}/reviews ` +
-      "--jq '[.[] | select(.state != \"PENDING\") | {user: .user.login, state: .state, body: .body}]'",
-    { cwd: repoDir, allowFailure: true }
-  )
-  if (revJson) {
+function jsonLines(text) {
+  const out = []
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue
     try {
-      existingReviews = JSON.parse(revJson)
+      out.push(JSON.parse(line))
     } catch (_) {}
   }
+  return out
+}
 
-  const cmtJson = run(
-    `gh api repos/${owner}/${repo}/pulls/${prNumber}/comments ` +
-      "--jq '[.[] | {user: .user.login, path: .path, line: .line, body: .body}]'",
-    { cwd: repoDir, allowFailure: true }
+function fetchExistingReviews(dir, owner, repo, prNumber) {
+  const reviews = jsonLines(
+    run(
+      'gh',
+      [
+        'api', '--paginate', `repos/${owner}/${repo}/pulls/${prNumber}/reviews`,
+        '--jq', '.[] | select(.state != "PENDING") | {user: .user.login, state: .state, body: .body}'
+      ],
+      { cwd: dir, allowFailure: true }
+    )
   )
-  if (cmtJson) {
-    try {
-      const cmts = JSON.parse(cmtJson)
-      existingReviews = existingReviews.concat(
-        cmts.map(c => `${c.user} on ${c.path}:${c.line}: ${c.body}`)
+  const comments = jsonLines(
+    run(
+      'gh',
+      [
+        'api', '--paginate', `repos/${owner}/${repo}/pulls/${prNumber}/comments`,
+        '--jq', '.[] | {user: .user.login, path: .path, line: .line, body: .body}'
+      ],
+      { cwd: dir, allowFailure: true }
+    )
+  ).map(c => `${c.user} on ${c.path}:${c.line}: ${c.body}`)
+  return reviews.concat(comments)
+}
+
+// ---------------------------------------------------------------------------
+// Main
+// ---------------------------------------------------------------------------
+
+function prepare(argv) {
+  const { flags, input } = parseArgs(argv)
+  if (!input) {
+    throw new PrepError(
+      'Usage: node review-prep.js [--base <ref>] [--repo-dir <path>] ' +
+        '<pr-url | pr-number | A..B | A...B | branch-name | "current">'
+    )
+  }
+  const target = classify(input)
+  const conventionsDir = path.resolve(__dirname, '..', '..', '..', '..')
+  const repoDir = findRepoDir(target, flags, conventionsDir)
+  const slug = originSlug(repoDir)
+  const owner = target.owner || (slug ? slug.owner : 'unknown')
+  const repo = target.repo || (slug ? slug.repo : cloneName(repoDir))
+  log(`Repo: ${owner}/${repo} at ${repoDir}`)
+
+  try {
+    execFileSync('git', ['fetch', '--quiet', 'origin'], { cwd: repoDir, stdio: 'ignore' })
+  } catch (_) {
+    log('Warning: could not fetch origin; using the remote-tracking refs already present')
+  }
+
+  let prNumber = target.prNumber || null
+  let prUrl = null
+  let branch = null
+  let baseRef = null
+  let baseSha
+  let headSha
+  let mergeBase
+  let uncommitted = false
+
+  if (target.mode === 'pr') {
+    log(`Fetching PR #${prNumber}...`)
+    const meta = JSON.parse(
+      run(
+        'gh',
+        ['pr', 'view', String(prNumber), '--repo', `${owner}/${repo}`, '--json', 'headRefName,headRefOid,baseRefName,url'],
+        { cwd: repoDir }
       )
-    } catch (_) {}
+    )
+    branch = meta.headRefName
+    prUrl = meta.url
+    headSha = meta.headRefOid
+    // Works for branches and forks alike, without adding remotes.
+    if (!hasRef(repoDir, headSha)) {
+      git(repoDir, 'fetch', '--quiet', 'origin', `refs/pull/${prNumber}/head`)
+    }
+    if (!hasRef(repoDir, headSha)) throw new PrepError(`PR head ${headSha} is not available locally`)
+    baseRef = normalizeRef(repoDir, flags.base || meta.baseRefName)
+    log(`Base: ${baseRef}  Head: ${branch} @ ${headSha.slice(0, 10)}`)
+  } else if (target.mode === 'range') {
+    if (flags.base) log('Ignoring --base: a range names its own base')
+    // A range is taken literally, the way git reads it.
+    for (const ref of [target.from, target.to]) {
+      if (!hasRef(repoDir, ref)) throw new PrepError(`Unknown ref: ${ref}`)
+    }
+    headSha = git(repoDir, 'rev-parse', `${target.to}^{commit}`)
+    const from = git(repoDir, 'rev-parse', `${target.from}^{commit}`)
+    baseRef = target.from
+    mergeBase = target.symmetric ? git(repoDir, 'merge-base', from, headSha) : from
+    const tips = tryGit(repoDir, 'for-each-ref', '--points-at', headSha, '--format=%(refname:short)', 'refs/heads')
+    branch = tips.split('\n').filter(Boolean)[0] || null
+  } else {
+    branch =
+      target.mode === 'branch' ? target.branch : tryGit(repoDir, 'branch', '--show-current') || null
+    const headRef =
+      target.mode === 'current'
+        ? 'HEAD'
+        : hasRef(repoDir, `refs/heads/${branch}`)
+          ? `refs/heads/${branch}`
+          : hasRef(repoDir, `refs/remotes/origin/${branch}`)
+            ? `origin/${branch}`
+            : null
+    if (!headRef) throw new PrepError(`Branch not found locally or on origin: ${branch}`)
+    headSha = git(repoDir, 'rev-parse', `${headRef}^{commit}`)
+    baseRef = flags.base ? normalizeRef(repoDir, flags.base) : defaultBase(repoDir, headSha)
+  }
+
+  baseSha = git(repoDir, 'rev-parse', `${baseRef}^{commit}`)
+  mergeBase = mergeBase || git(repoDir, 'merge-base', baseSha, headSha)
+
+  // ---- Diff ---------------------------------------------------------------
+  log('Generating diff...')
+  const diffArgs = ['--no-color', '--no-ext-diff', '-M']
+  let diff
+  let changedFiles
+  let diffSummary
+  const committed = mergeBase !== headSha
+  if (target.mode === 'current' && !committed) {
+    // Nothing committed on top of the base: review the working tree.
+    uncommitted = true
+    diff = git(repoDir, 'diff', ...diffArgs, 'HEAD')
+    changedFiles = git(repoDir, 'diff', '--name-only', '-M', 'HEAD').split('\n').filter(Boolean)
+    diffSummary = (git(repoDir, 'diff', '--stat', 'HEAD').split('\n').pop() || '').trim()
+  } else {
+    diff = git(repoDir, 'diff', ...diffArgs, mergeBase, headSha)
+    changedFiles = git(repoDir, 'diff', '--name-only', '-M', mergeBase, headSha).split('\n').filter(Boolean)
+    diffSummary = (git(repoDir, 'diff', '--stat', mergeBase, headSha).split('\n').pop() || '').trim()
+  }
+
+  const id = prNumber ? `pr-${prNumber}` : (branch || 'range').replace(/[^A-Za-z0-9._-]+/g, '-')
+  const diffFile = `/tmp/review-${repo}-${id}-${headSha.slice(0, 10)}${uncommitted ? '-wip' : ''}.diff`
+  fs.writeFileSync(diffFile, diff + '\n')
+  log(`${changedFiles.length} files changed → ${diffFile}`)
+
+  // ---- Subagents ------------------------------------------------------------
+  log('Selecting subagents...')
+  const hasPm2 =
+    tryGit(repoDir, 'cat-file', '-t', `${headSha}:pm2.json`) === 'blob' ||
+    (uncommitted && fs.existsSync(path.join(repoDir, 'pm2.json')))
+  const subagents = selectSubagents({
+    agents: listAgents(conventionsDir),
+    changedFiles,
+    fileDiffs: parseDiffByFile(diff),
+    isServer: repo.endsWith('-server') || hasPm2
+  })
+
+  const existingReviews = prNumber ? fetchExistingReviews(repoDir, owner, repo, prNumber) : []
+
+  return {
+    repo,
+    owner,
+    mode: target.mode,
+    branch,
+    baseBranch: baseRef,
+    baseSha,
+    mergeBase,
+    headSha,
+    range: target.mode === 'range' ? input : null,
+    uncommitted,
+    prNumber,
+    prUrl,
+    isLocalBranch: target.mode !== 'pr',
+    repoDir,
+    changedFiles,
+    diffFile,
+    subagents,
+    existingReviews,
+    diffSummary
   }
 }
 
-// ---------------------------------------------------------------------------
-// Output manifest
-// ---------------------------------------------------------------------------
+module.exports = { classify, parseDiffByFile, selectSubagents, prepare }
 
-const manifest = {
-  repo,
-  owner,
-  branch: branchName,
-  baseBranch,
-  prNumber,
-  prUrl,
-  isLocalBranch,
-  repoDir,
-  changedFiles,
-  diffFile,
-  subagents,
-  existingReviews,
-  diffSummary
+if (require.main === module) {
+  ensureGhToken()
+  try {
+    console.log(JSON.stringify(prepare(process.argv.slice(2)), null, 2))
+  } catch (e) {
+    if (!(e instanceof PrepError)) throw e
+    log(e.message)
+    process.exit(1)
+  }
 }
-
-console.log(JSON.stringify(manifest, null, 2))

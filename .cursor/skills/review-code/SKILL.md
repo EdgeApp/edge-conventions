@@ -1,35 +1,56 @@
 ---
 name: review-code
-description: Review code changes for quality and convention compliance. Supports both GitHub pull requests and local branches.
+description: Review code changes for quality and convention compliance. Supports GitHub pull requests, local branches, commit ranges, and uncommitted changes.
 ---
 
 # Review Code Skill
 
-Review code changes for quality and convention compliance. The heavy lifting (repo checkout, diff generation, subagent selection) is handled by scripts in `scripts/` adjacent to this file.
+Review code changes for quality and convention compliance. The heavy lifting (resolving the change, diff generation, subagent selection) is handled by scripts in `scripts/` adjacent to this file.
+
+Use the `deploy` branch of edge-conventions: it carries the current agents, skills, and scripts. Fast-forward it (`git pull --ff-only origin deploy`) before a review.
 
 ## Step 1: Prepare
 
 Determine the absolute path to the `scripts/` directory next to this SKILL.md.
 
-Run the prep script with the user's input (PR URL, PR number, branch name, or `"current"`):
+Run the prep script from the repository under review with the user's input:
 
 ```bash
-node SCRIPTS_DIR/review-prep.js "<user-input>"
+node SCRIPTS_DIR/review-prep.js [--base <ref>] [--repo-dir <path>] "<user-input>"
 ```
+
+| Input | Reviews |
+| --- | --- |
+| PR URL, or PR number (`123`, `#123`) | The PR head (fetched as `refs/pull/N/head`, forks included) against `origin/<PR base>` |
+| `A..B` | Exactly the commits from `A` to `B` |
+| `A...B` | From `merge-base(A, B)` to `B` |
+| Branch name | That branch against its base |
+| `current` | `HEAD` against its base; the uncommitted changes when nothing is committed on top of the base |
+
+The base is `--base` when given (a bare name like `develop` means `origin/develop`), otherwise whichever of `origin/master` and `origin/develop` the head forked from. A range names its own base and ignores `--base`.
+
+The script never checks out, switches, or resets anything: diffs come from refs, so it is safe in a checkout with work in progress. Subagents read whole files at the reviewed commit with `git -C <repoDir> show <headSha>:<path>`, not from the working tree (except in uncommitted mode).
 
 Parse the JSON stdout as the **manifest**. Key fields:
 
 | Field              | Description                                             |
 | ------------------ | ------------------------------------------------------- |
-| `repo` / `owner`   | Repository name and GitHub owner                        |
-| `branch`           | Head branch name                                        |
-| `baseBranch`       | Base branch for comparison                              |
-| `prNumber` / `prUrl` | PR metadata (null for local branches)                 |
+| `repo` / `owner`   | Repository name and GitHub owner (from the `origin` remote) |
+| `mode`             | `pr`, `range`, `branch`, or `current`                   |
+| `branch`           | Head branch name (null for a range no branch points at) |
+| `baseBranch`       | Base ref the diff is taken against                      |
+| `mergeBase` / `headSha` | The diff runs from `mergeBase` to `headSha`        |
+| `range`            | The range as given (range mode)                         |
+| `uncommitted`      | True when the diff is the working tree                  |
+| `prNumber` / `prUrl` | PR metadata (null otherwise)                          |
+| `repoDir`          | The checkout the refs were read from                    |
 | `changedFiles`     | Array of changed file paths                             |
 | `diffFile`         | Path to the full unified diff on disk                   |
 | `subagents`        | Map of subagent name → file list / boolean / false      |
 | `existingReviews`  | Prior reviewer comments (for deduplication)             |
 | `diffSummary`      | One-line stat summary                                   |
+
+Every file in `.cursor/agents/` appears in `subagents`. An agent the script has no selection rule for gets every changed file.
 
 Save the manifest to `/tmp/MMDDHHmm_<repo>_<branch>_<pr-N|review>_manifest.json` (same naming convention as the final review document, but with a `_manifest.json` suffix).
 
@@ -44,7 +65,7 @@ Use the Task tool with the matching `subagent_type` (e.g. `review-react`, `revie
 
 Each subagent prompt must include:
 
-1. Repository: `{owner}/{repo}`, branch: `{branch}`, base: `{baseBranch}`
+1. Repository: `{owner}/{repo}`, branch: `{branch}`, base: `{baseBranch}`, reviewed commits `{mergeBase}..{headSha}`, checkout `{repoDir}`
 2. The file list from the manifest entry
 3. The diff content for those files (read from `manifest.diffFile` and extract the relevant sections)
 4. Prior reviewer comments from `manifest.existingReviews` so the subagent avoids duplicating feedback
@@ -58,7 +79,7 @@ Merge all subagent findings into a single JSON array. Save to `/tmp/MMDDHHmm_<re
 node SCRIPTS_DIR/review-report.js --manifest /tmp/<manifest-filename> --findings /tmp/<findings-filename>
 ```
 
-The script outputs the path to the generated review markdown document.
+The script outputs the path to the generated review markdown document. Severities other than the three above (`0`–`3`, `high`, `nit`, …) are mapped onto them; anything unrecognised is listed under "Other", never dropped.
 
 ## Step 4: Present
 
@@ -73,6 +94,12 @@ If `manifest.prNumber` is set, submit the review to GitHub:
 node SCRIPTS_DIR/review-submit.js --repo <owner>/<repo> --pr <prNumber> --review-file <review-document-path>
 ```
 
-The script outputs the review URL.
+The script outputs the review URL. It requests changes for a critical finding, comments for a warning, and approves otherwise; on your own PR GitHub allows only a comment, so it comments. `--event APPROVE|COMMENT|REQUEST_CHANGES` overrides.
 
-For local branches: skip submission and offer to help fix issues or create a PR.
+For local branches and ranges: skip submission and offer to help fix issues or create a PR.
+
+## Tests
+
+```bash
+node --test .cursor/skills/review-code/scripts/test/*.test.js
+```

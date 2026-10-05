@@ -86,11 +86,13 @@ Skills are defined in `.cursor/skills/` and provide reusable workflows that comm
 
 ### review-code
 
-Review code changes for quality and convention compliance. Supports both GitHub pull requests and local branches.
+Review code changes for quality and convention compliance. Supports GitHub pull requests, local branches, commit ranges, and uncommitted changes.
 
-**Usage**: Provide a GitHub PR URL, PR number, local branch name, or "current branch".
+**Usage**: Provide a GitHub PR URL, PR number, local branch name, a commit range (`A..B` or `A...B`), or "current".
 
-**Workflow**: Checkout code → Detect fork vs internal branch → Get diff → Launch review subagents in parallel (`review-react`, `review-errors`, `review-state`, `review-async`, `review-cleaners`, `review-code-quality`, `review-comments`, `review-strings`, `review-tests`, `review-pr`, `review-servers`, `review-repo`, `review-performance`) → Compile findings into Critical Issues / Warnings / Suggestions → Save review to `/tmp` → For PRs: submit inline comments via GitHub
+**Workflow**: Resolve the head and its `origin` base (nothing is checked out) → Get diff → Select review subagents from `.cursor/agents/` by the changed files → Launch them in parallel → Compile findings into Critical Issues / Warnings / Suggestions → Save review to `/tmp` → For PRs: submit inline comments via GitHub
+
+Run the skill from the `deploy` branch of edge-conventions: it carries the current agents, skills, and scripts.
 
 ---
 
